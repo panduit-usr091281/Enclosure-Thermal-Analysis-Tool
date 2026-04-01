@@ -647,6 +647,26 @@
                 </div>
             </div>
 
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="sunlight">Direct Sunlight</label>
+                    <select id="sunlight" onchange="toggleSunColor()">
+                        <option value="0" selected>No &mdash; Indoor / Shaded</option>
+                        <option value="1">Yes &mdash; Direct Sun Exposure</option>
+                    </select>
+                </div>
+                <div class="form-group" id="sunColorGroup" style="display:none;">
+                    <label for="sunColor">Enclosure Color</label>
+                    <select id="sunColor">
+                        <option value="0.9">Black / Dark (&alpha; = 0.9)</option>
+                        <option value="0.7" selected>Medium / Gray (&alpha; = 0.7)</option>
+                        <option value="0.5">Light / Beige (&alpha; = 0.5)</option>
+                        <option value="0.3">White / Reflective (&alpha; = 0.3)</option>
+                    </select>
+                    <div class="unit-hint">Solar absorptivity — darker colors absorb more heat</div>
+                </div>
+            </div>
+
             <div class="divider"></div>
             <div class="section-title">Heat Load</div>
 
@@ -1021,7 +1041,29 @@
             </div>
 
             <div class="ref-block">
-                <h3>6. Effective Surface Area by Mounting Type</h3>
+                <h3>6. Solar Heat Gain (Direct Sunlight)</h3>
+                <div class="formula-box">
+                    <div class="formula">Q<sub>solar</sub> = &alpha; &times; I &times; A<sub>exposed</sub></div>
+                </div>
+                <table class="ref-table">
+                    <tr><td class="ref-var">&alpha;</td><td>Solar absorptivity of surface (0 to 1)</td></tr>
+                    <tr><td class="ref-var">I</td><td>Solar irradiance = 1000 W/m&sup2; (standard peak)</td></tr>
+                    <tr><td class="ref-var">A<sub>exposed</sub></td><td>Sun-exposed area = Top + Largest vertical face (m&sup2;)</td></tr>
+                </table>
+                <table class="ref-table">
+                    <thead><tr><th>Color</th><th>&alpha;</th><th>Examples</th></tr></thead>
+                    <tbody>
+                        <tr><td>Black / Dark</td><td>0.9</td><td>Black, dark gray, dark blue</td></tr>
+                        <tr><td>Medium</td><td>0.7</td><td>Gray, olive, brown</td></tr>
+                        <tr><td>Light</td><td>0.5</td><td>Beige, light gray, tan</td></tr>
+                        <tr><td>White / Reflective</td><td>0.3</td><td>White, polished aluminum</td></tr>
+                    </tbody>
+                </table>
+                <p class="ref-note">Solar gain is added to equipment heat load: Q<sub>total</sub> = Q<sub>equipment</sub> + Q<sub>solar</sub>. Based on worst-case peak solar irradiance at sea level.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>7. Effective Surface Area by Mounting Type</h3>
                 <table class="ref-table">
                     <thead>
                         <tr><th>Mounting</th><th>Formula</th><th>Notes</th></tr>
@@ -1037,7 +1079,7 @@
             </div>
 
             <div class="ref-block">
-                <h3>7. Thermal Transmittance Coefficients (k)</h3>
+                <h3>8. Thermal Transmittance Coefficients (k)</h3>
                 <table class="ref-table">
                     <thead>
                         <tr><th>Material</th><th>k (W/m&sup2;&middot;&deg;C)</th><th>Notes</th></tr>
@@ -1054,7 +1096,7 @@
             </div>
 
             <div class="ref-block">
-                <h3>8. Forced Airflow (Fan CFM)</h3>
+                <h3>9. Forced Airflow (Fan CFM)</h3>
                 <div class="formula-box">
                     <div class="formula">CFM = (1.76 &times; Q) / &Delta;T</div>
                 </div>
@@ -1068,7 +1110,7 @@
             </div>
 
             <div class="ref-block">
-                <h3>9. Fan with Passive Cooling Combined</h3>
+                <h3>10. Fan with Passive Cooling Combined</h3>
                 <div class="formula-box">
                     <div class="formula">T<sub>internal</sub> = T<sub>ambient</sub> + Q / (k &times; A<sub>eff</sub> + CFM / 1.76)</div>
                 </div>
@@ -1076,7 +1118,7 @@
             </div>
 
             <div class="ref-block">
-                <h3>10. Unit Conversions</h3>
+                <h3>11. Unit Conversions</h3>
                 <table class="ref-table">
                     <tr><td class="ref-var">&deg;F &rarr; &deg;C</td><td>(&deg;F &minus; 32) &times; 5/9</td></tr>
                     <tr><td class="ref-var">&deg;C &rarr; &deg;F</td><td>&deg;C &times; 9/5 + 32</td></tr>
@@ -1094,6 +1136,11 @@
 
     <script>
         var lastCalc = null;
+
+        function toggleSunColor() {
+            var sun = document.getElementById('sunlight').value;
+            document.getElementById('sunColorGroup').style.display = sun === '1' ? '' : 'none';
+        }
 
         function toggleHeatMode() {
             const mode = document.getElementById('heatMode').value;
@@ -1170,6 +1217,21 @@
             const aTop = w * d;
             const aBottom = w * d;
 
+            // Solar heat gain
+            const sunExposed = document.getElementById('sunlight').value === '1';
+            let solarGain = 0;
+            if (sunExposed) {
+                const alpha = parseFloat(document.getElementById('sunColor').value);
+                const solarIrradiance = 1000; // W/m² standard peak
+                // Sun hits top + largest vertical face
+                const largestSide = Math.max(aFront, aLeft);
+                const solarArea = aTop + largestSide;
+                solarGain = alpha * solarIrradiance * solarArea;
+            }
+
+            // Total heat = equipment + solar
+            const totalHeat = heatLoad + solarGain;
+
             // Effective surface area depends on mounting
             // Wall mounted: back panel against wall (reduced to 50%), bottom excluded
             // Floor standing: bottom excluded, back against wall (reduced to 50%)
@@ -1189,10 +1251,10 @@
             }
 
             // Store for fan calculator
-            lastCalc = { k, effectiveArea, heatLoad, maxInternalC };
+            lastCalc = { k, effectiveArea, heatLoad: totalHeat, maxInternalC };
 
             // ΔT = Q / (k × A)
-            const deltaT = heatLoad / (k * effectiveArea);
+            const deltaT = totalHeat / (k * effectiveArea);
 
             // Max ambient temp = Max internal temp - ΔT
             const maxAmbientC = maxInternalC - deltaT;
@@ -1221,6 +1283,17 @@
             document.getElementById('kValue').textContent = k + ' W/m²·°C';
             document.getElementById('deltaT').textContent = deltaT.toFixed(2) + ' °C';
 
+            // Solar load display
+            if (sunExposed && solarGain > 0) {
+                document.getElementById('solarLoadRow').style.display = '';
+                document.getElementById('solarLoad').textContent = solarGain.toFixed(1) + ' W';
+                document.getElementById('totalHeatRow').style.display = '';
+                document.getElementById('totalHeatDisplay').textContent = totalHeat.toFixed(1) + ' W';
+            } else {
+                document.getElementById('solarLoadRow').style.display = 'none';
+                document.getElementById('totalHeatRow').style.display = 'none';
+            }
+
             // Status badges
             const ambientCard = document.getElementById('ambientCard');
             const dissipationCard = document.getElementById('dissipationCard');
@@ -1240,7 +1313,7 @@
                 ambientBadge.innerHTML = '<span class="status-badge danger">Cooling Required</span>';
             }
 
-            if (heatLoad <= maxDissipationAt40) {
+            if (totalHeat <= maxDissipationAt40) {
                 dissipationBadge.innerHTML = '<span class="status-badge ok">Within Capacity</span>';
             } else {
                 dissipationCard.classList.add('danger');
@@ -1249,7 +1322,7 @@
 
             // Fan recommendation
             const fanPanel = document.getElementById('fanRecommendation');
-            const excessHeat = heatLoad - maxDissipationAt40;
+            const excessHeat = totalHeat - maxDissipationAt40;
 
             if (excessHeat > 0 || maxAmbientC < 35) {
                 fanPanel.style.display = 'block';
@@ -1257,7 +1330,7 @@
                 // CFM = 1.76 × watts / ΔT  — standard forced-air formula
                 // Using a ΔT of (maxInternal - 40) for fan sizing at 40°C ambient
                 const fanDeltaT = maxInternalC - standardAmbient;
-                const requiredCFM = fanDeltaT > 0 ? (1.76 * heatLoad) / fanDeltaT : 1.76 * heatLoad;
+                const requiredCFM = fanDeltaT > 0 ? (1.76 * totalHeat) / fanDeltaT : 1.76 * totalHeat;
 
                 document.getElementById('fanCFM').textContent = requiredCFM.toFixed(1) + ' CFM';
 
@@ -2122,6 +2195,16 @@
             lines.push('Mounting: ' + mountText);
             lines.push('Max Internal Temperature: ' + maxInternalC + ' °C (' + (maxInternalC * 9/5 + 32) + ' °F)');
             lines.push('Heat Load: ' + heatLoad.toFixed(2) + ' W');
+            var sunExport = document.getElementById('sunlight').value === '1';
+            if (sunExport) {
+                var sunColorSel = document.getElementById('sunColor');
+                lines.push('Direct Sunlight: Yes (' + sunColorSel.options[sunColorSel.selectedIndex].text + ')');
+                var solarGainExport = heatLoad - parseFloat(document.getElementById('totalHeatDisplay')?.textContent) || 0;
+                // Recalculate solar gain for export
+                lines.push('Note: Total heat used in calculations includes solar gain.');
+            } else {
+                lines.push('Direct Sunlight: No');
+            }
             lines.push('');
 
             // Results
