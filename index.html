@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Load Calculator</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem 1rem;
+        }
+
+        .calculator {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            max-width: 560px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f4c75, #1b6ca8);
+            color: #fff;
+            padding: 2rem 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .header p {
+            font-size: 0.875rem;
+            opacity: 0.85;
+        }
+
+        .body {
+            padding: 2rem 2.5rem;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.375rem;
+        }
+
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            font-family: inherit;
+            color: #1a1a2e;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8.825a.5.5 0 0 1-.354-.146l-4-4a.5.5 0 0 1 .708-.708L6 7.617l3.646-3.646a.5.5 0 0 1 .708.708l-4 4A.5.5 0 0 1 6 8.825z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.875rem center;
+            padding-right: 2.5rem;
+        }
+
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #1b6ca8;
+            box-shadow: 0 0 0 3px rgba(27, 108, 168, 0.15);
+        }
+
+        input[type="number"]::placeholder {
+            color: #9ca3af;
+        }
+
+        .dimensions-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .unit-hint {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .btn-calculate {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #0f4c75, #1b6ca8);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 0.5rem;
+        }
+
+        .btn-calculate:hover {
+            opacity: 0.92;
+        }
+
+        .btn-calculate:active {
+            transform: scale(0.985);
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 1.75rem 0;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.visible {
+            display: block;
+        }
+
+        .result-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .result-card {
+            background: #f8fafc;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1.25rem;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .result-card.warning {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .result-card.danger {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .result-card .result-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-card .result-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #0f4c75;
+        }
+
+        .result-card .result-unit {
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .result-details {
+            margin-top: 1rem;
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            border: 1.5px solid #e5e7eb;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            font-size: 0.85rem;
+        }
+
+        .detail-row:not(:last-child) {
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-label {
+            color: #6b7280;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            margin-top: 0.5rem;
+        }
+
+        .status-badge.ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .temp-table-wrap {
+            margin-top: 1rem;
+            overflow-x: auto;
+        }
+
+        .temp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .temp-table th,
+        .temp-table td {
+            padding: 0.45rem 0.6rem;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .temp-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #374151;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.04em;
+            position: sticky;
+            top: 0;
+        }
+
+        .temp-table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .temp-table .row-ok td { color: #065f46; }
+        .temp-table .row-warn td { color: #92400e; }
+        .temp-table .row-danger td { color: #991b1b; font-weight: 600; }
+
+        .chart-container {
+            margin-top: 1rem;
+            background: #f8fafc;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+
+        .chart-container canvas {
+            width: 100%;
+            height: 280px;
+        }
+
+        .fan-cfm-section {
+            margin-top: 0.75rem;
+            background: #f0f7ff;
+            border: 1.5px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+        }
+
+        .fan-cfm-section .section-title {
+            color: #1e40af;
+        }
+
+        .fan-calc-wrap {
+            margin-top: 0.25rem;
+        }
+
+        .fan-calc-wrap .section-title {
+            color: #7c3aed;
+        }
+
+        .fan-calc-note {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .fan-improvement {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #f0fdf4;
+            border: 1.5px solid #86efac;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            color: #166534;
+            margin-bottom: 0.75rem;
+        }
+
+        .fan-improvement .arrow {
+            font-size: 1.25rem;
+        }
+
+        @media (max-width: 480px) {
+            .body {
+                padding: 1.5rem;
+            }
+            .dimensions-row {
+                grid-template-columns: 1fr;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .result-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Reference Section Styles */
+        .reference-section {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            max-width: 560px;
+            width: 100%;
+            overflow: hidden;
+            margin-top: 2rem;
+        }
+
+        .ref-header {
+            background: linear-gradient(135deg, #374151, #4b5563);
+            color: #fff;
+            padding: 1.5rem 2.5rem;
+        }
+
+        .ref-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .ref-header p {
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+
+        .ref-body {
+            padding: 1.5rem 2.5rem 2rem;
+        }
+
+        .ref-block {
+            margin-bottom: 1.75rem;
+        }
+
+        .ref-block h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0f4c75;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .formula-box {
+            background: #f0f7ff;
+            border: 1.5px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 0.875rem 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .formula {
+            font-family: 'Cambria Math', 'Georgia', serif;
+            font-size: 1.05rem;
+            color: #1e40af;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .ref-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .ref-table th,
+        .ref-table td {
+            padding: 0.45rem 0.6rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .ref-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .ref-table .ref-var {
+            font-family: 'Cambria Math', 'Georgia', serif;
+            font-weight: 600;
+            color: #1e40af;
+            white-space: nowrap;
+            width: 100px;
+        }
+
+        .ref-note {
+            font-size: 0.8rem;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-top: 0.375rem;
+        }
+
+        .ref-disclaimer {
+            background: #fffbeb;
+            border: 1.5px solid #fcd34d;
+            border-radius: 8px;
+            padding: 0.875rem 1.25rem;
+            font-size: 0.8rem;
+            color: #92400e;
+            line-height: 1.55;
+            margin-top: 0.5rem;
+        }
+
+        /* Ventilation Section */
+        .vent-section {
+            margin-top: 0.25rem;
+        }
+
+        .vent-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .vent-card {
+            background: #f8fafc;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .vent-card.sealed { border-left: 4px solid #6b7280; }
+        .vent-card.open { border-left: 4px solid #10b981; }
+        .vent-card.screen { border-left: 4px solid #f59e0b; }
+        .vent-card.forced { border-left: 4px solid #1b6ca8; }
+
+        .vent-card-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .vent-card-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 0.2rem;
+        }
+
+        .vent-card-desc {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            margin-bottom: 0.6rem;
+            line-height: 1.3;
+        }
+
+        .vent-card-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .vent-stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+        }
+
+        .vent-stat-label {
+            color: #6b7280;
+        }
+
+        .vent-stat-value {
+            font-weight: 600;
+            color: #0f4c75;
+        }
+
+        /* Export Button */
+        .btn-export {
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(135deg, #374151, #4b5563);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-export:hover { opacity: 0.92; }
+        .btn-export:active { transform: scale(0.985); }
+
+        @media (max-width: 480px) {
+            .vent-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="header">
+            <h1>Thermal Load Calculator</h1>
+            <p>Calculate enclosure thermal characteristics</p>
+        </div>
+
+        <div class="body">
+            <div class="section-title">Enclosure Dimensions</div>
+
+            <div class="dimensions-row">
+                <div class="form-group">
+                    <label for="height">Height</label>
+                    <input type="number" id="height" placeholder="0" min="0" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="width">Width</label>
+                    <input type="number" id="width" placeholder="0" min="0" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="depth">Depth</label>
+                    <input type="number" id="depth" placeholder="0" min="0" step="any">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="unit">Dimension Unit</label>
+                <select id="unit">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="in" selected>Inches (in)</option>
+                    <option value="cm">Centimeters (cm)</option>
+                </select>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Enclosure Properties</div>
+
+            <div class="form-group">
+                <label for="material">Enclosure Material</label>
+                <select id="material">
+                    <option value="5.5">Painted Mild Steel (1.5 mm)</option>
+                    <option value="3.4">Stainless Steel (1.5 mm)</option>
+                    <option value="5.5">Aluminum (Painted)</option>
+                    <option value="3.0">Fiberglass / Polyester</option>
+                    <option value="2.5">Polycarbonate</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="mounting">Mounting</label>
+                    <select id="mounting">
+                        <option value="wall">Wall Mounted</option>
+                        <option value="floor">Floor Standing</option>
+                        <option value="free">Free Standing</option>
+                        <option value="pole">Pole Mounted</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="maxInternal">Max Internal Temp</label>
+                    <select id="maxInternal">
+                        <option value="35">35 °C (95 °F)</option>
+                        <option value="40">40 °C (104 °F)</option>
+                        <option value="45">45 °C (113 °F)</option>
+                        <option value="50" selected>50 °C (122 °F)</option>
+                        <option value="55">55 °C (131 °F)</option>
+                        <option value="60">60 °C (140 °F)</option>
+                        <option value="65">65 °C (149 °F)</option>
+                        <option value="70">70 °C (158 °F)</option>
+                        <option value="75">75 °C (167 °F)</option>
+                        <option value="80">80 °C (176 °F)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Heat Load</div>
+
+            <div class="form-group">
+                <label for="heatMode">Input Method</label>
+                <select id="heatMode" onchange="toggleHeatMode()">
+                    <option value="direct">Enter Heat Dissipation Directly (W)</option>
+                    <option value="efficiency">Calculate from Equipment Power &amp; Efficiency</option>
+                </select>
+            </div>
+
+            <div id="directHeatGroup" class="form-group">
+                <label for="heatLoad">Internal Heat Dissipation (W)</label>
+                <input type="number" id="heatLoad" placeholder="e.g. 250" min="0" step="any">
+                <div class="unit-hint">Total watts generated by internal components</div>
+            </div>
+
+            <div id="efficiencyGroup" style="display:none;">
+                <div class="form-group">
+                    <label for="equipPower">Total Equipment Power (W)</label>
+                    <input type="number" id="equipPower" placeholder="e.g. 300" min="0" step="any" oninput="updateHeatFromEfficiency()">
+                    <div class="unit-hint">Total power consumed by all devices in the enclosure</div>
+                </div>
+                <div class="form-group">
+                    <label for="efficiency">Equipment Efficiency (%)</label>
+                    <input type="number" id="efficiency" placeholder="96" value="96" min="0" max="100" step="0.1" oninput="updateHeatFromEfficiency()">
+                    <div class="unit-hint">Typical: 96% for switches/routers, 90% for power supplies</div>
+                </div>
+                <div class="form-group" id="calcHeatDisplay" style="background:#e8f4fd; padding:0.75rem 1rem; border-radius:8px; font-size:0.875rem; color:#0f4c75; display:none;">
+                    <strong>Calculated Heat Load:</strong> <span id="calcHeatValue">—</span> W
+                    <div style="font-size:0.78rem; color:#6b7280; margin-top:0.25rem;">Q = Power × (1 − Efficiency/100)</div>
+                </div>
+            </div>
+
+            <button class="btn-calculate" onclick="calculate()">Calculate</button>
+
+            <div class="results" id="results">
+                <div class="divider"></div>
+                <div class="section-title">Results</div>
+
+                <div class="result-cards">
+                    <div class="result-card" id="ambientCard">
+                        <div class="result-label">Max Ambient Temp</div>
+                        <div class="result-value" id="maxAmbient">—</div>
+                        <div class="result-unit" id="maxAmbientUnit">°C</div>
+                        <div id="ambientBadge"></div>
+                    </div>
+                    <div class="result-card" id="dissipationCard">
+                        <div class="result-label">Max Heat Dissipation</div>
+                        <div class="result-value" id="maxDissipation">—</div>
+                        <div class="result-unit">Watts</div>
+                        <div id="dissipationBadge"></div>
+                    </div>
+                </div>
+
+                <div class="result-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Effective Surface Area</span>
+                        <span class="detail-value" id="surfaceArea">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Thermal Transmittance (k)</span>
+                        <span class="detail-value" id="kValue">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Temperature Rise (ΔT)</span>
+                        <span class="detail-value" id="deltaT">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Max Ambient (°F)</span>
+                        <span class="detail-value" id="maxAmbientF">—</span>
+                    </div>
+                </div>
+
+                <div class="result-details" id="fanRecommendation" style="margin-top: 0.75rem; display: none;">
+                    <div class="section-title" style="margin-bottom: 0.5rem;">Fan Recommendation</div>
+                    <div class="detail-row">
+                        <span class="detail-label">Required Airflow</span>
+                        <span class="detail-value" id="fanCFM">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Recommended Fan Size</span>
+                        <span class="detail-value" id="fanSize">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Suggested Quantity</span>
+                        <span class="detail-value" id="fanQty">—</span>
+                    </div>
+                    <div id="fanNote" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;"></div>
+                </div>
+
+                <div class="fan-cfm-section" id="fanCfmSection" style="display: none;">
+                    <div class="section-title" style="margin-bottom: 0.5rem;">Fan CFM Requirements</div>
+                    <div class="detail-row">
+                        <span class="detail-label">Min CFM to meet goal (<span id="cfmGoalTemp"></span>)</span>
+                        <span class="detail-value" id="cfmGoal">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Fan size for goal</span>
+                        <span class="detail-value" id="cfmGoalFan">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Min CFM to maintain 55 °C (131 °F)</span>
+                        <span class="detail-value" id="cfm55">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Fan size for 55 °C</span>
+                        <span class="detail-value" id="cfm55Fan">—</span>
+                    </div>
+                    <div id="cfmNote" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;"></div>
+                </div>
+
+                <div class="divider"></div>
+                <div class="section-title">Internal Temperature vs. Ambient</div>
+
+                <div class="temp-table-wrap">
+                    <table class="temp-table">
+                        <thead>
+                            <tr>
+                                <th>Ambient (°F)</th>
+                                <th>Ambient (°C)</th>
+                                <th>Internal (°C)</th>
+                                <th>Internal (°F)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tempTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+
+                <div class="divider"></div>
+                <div class="fan-calc-wrap">
+                    <div class="section-title">Fan CFM Calculator</div>
+                    <p class="fan-calc-note">Enter a fan CFM value to see its cooling effect on the enclosure.</p>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fanCfmInput">Fan Airflow (CFM)</label>
+                            <input type="number" id="fanCfmInput" placeholder="e.g. 50" min="0" step="any">
+                        </div>
+                        <div class="form-group" style="display:flex; align-items:flex-end;">
+                            <button class="btn-calculate" onclick="calculateFanCooling()" style="margin-top:0;">Analyze Fan</button>
+                        </div>
+                    </div>
+
+                    <div id="fanCalcResults" style="display:none;">
+                        <div class="result-cards" style="margin-bottom:0.75rem;">
+                            <div class="result-card" id="fanAmbientCard">
+                                <div class="result-label">Max Ambient w/ Fan</div>
+                                <div class="result-value" id="fanMaxAmbient">&mdash;</div>
+                                <div class="result-unit" id="fanMaxAmbientUnit">&deg;C</div>
+                                <div id="fanAmbientBadge"></div>
+                            </div>
+                            <div class="result-card" id="fanInternalCard">
+                                <div class="result-label">Internal @ 40&deg;C Amb.</div>
+                                <div class="result-value" id="fanInternal40">&mdash;</div>
+                                <div class="result-unit" id="fanInternal40Unit">&deg;C</div>
+                                <div id="fanInternalBadge"></div>
+                            </div>
+                        </div>
+
+                        <div id="fanImprovementBox" class="fan-improvement" style="display:none;">
+                            <span class="arrow">&#9660;</span>
+                            <span id="fanImprovementText"></span>
+                        </div>
+
+                        <div class="result-details" style="margin-bottom:0.75rem;">
+                            <div class="detail-row">
+                                <span class="detail-label">&Delta;T with fan</span>
+                                <span class="detail-value" id="fanDeltaT">&mdash;</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">&Delta;T passive only</span>
+                                <span class="detail-value" id="passiveDeltaT">&mdash;</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Temperature reduction</span>
+                                <span class="detail-value" id="fanTempReduction">&mdash;</span>
+                            </div>
+                        </div>
+
+                        <div class="section-title" style="margin-bottom:0.5rem;">Internal Temp vs. Ambient (with Fan)</div>
+                        <div class="temp-table-wrap">
+                            <table class="temp-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ambient (&deg;F)</th>
+                                        <th>Ambient (&deg;C)</th>
+                                        <th>Internal (&deg;C)</th>
+                                        <th>Internal (&deg;F)</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fanTempTableBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="chart-container">
+                            <div class="section-title" style="margin-bottom:0.5rem;">Internal Temperature vs. Fan CFM (at 40&deg;C Ambient)</div>
+                            <canvas id="fanCfmChart"></canvas>
+                        </div>
+
+                        <div class="divider"></div>
+                        <div class="section-title" style="margin-bottom:0.25rem;">&Delta;T Comparison: Passive vs. Fan-Cooled</div>
+                        <p class="fan-calc-note">Temperature rise (&Delta;T) at varying heat loads from 0 W to 200 W, comparing passive-only vs. fan-assisted cooling.</p>
+                        <div class="temp-table-wrap" style="margin-top:0.75rem;">
+                            <table class="temp-table">
+                                <thead>
+                                    <tr>
+                                        <th>Heat Load (W)</th>
+                                        <th>&Delta;T Passive (&deg;C)</th>
+                                        <th>&Delta;T w/ Fan (&deg;C)</th>
+                                        <th>Reduction (&deg;C)</th>
+                                        <th>Reduction (&deg;F)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deltaTCompareBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="chart-container" style="margin-top:1rem;">
+                            <div class="section-title" style="margin-bottom:0.5rem;">&Delta;T vs. Heat Load (Passive vs. Fan)</div>
+                            <canvas id="deltaTCompareChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                <div class="vent-section">
+                    <div class="section-title">Ventilation Thermal Comparison</div>
+                    <p class="fan-calc-note">Thermal characteristics under different ventilation configurations at the current heat load.</p>
+
+                    <div class="vent-cards" id="ventCards">
+                        <div class="vent-card sealed">
+                            <div class="vent-card-icon">&#9632;</div>
+                            <div class="vent-card-title">Sealed Enclosure</div>
+                            <div class="vent-card-desc">No openings &mdash; passive convection &amp; radiation only</div>
+                            <div class="vent-card-stats">
+                                <div class="vent-stat"><span class="vent-stat-label">&Delta;T</span><span class="vent-stat-value" id="ventSealedDT">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Amb.</span><span class="vent-stat-value" id="ventSealedAmb">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Q</span><span class="vent-stat-value" id="ventSealedQ">&mdash;</span></div>
+                            </div>
+                            <div id="ventSealedBadge" style="text-align:center;"></div>
+                        </div>
+
+                        <div class="vent-card open">
+                            <div class="vent-card-icon">&#9635;</div>
+                            <div class="vent-card-title">Vent Open</div>
+                            <div class="vent-card-desc">Unobstructed openings &mdash; natural convection enhanced</div>
+                            <div class="vent-card-stats">
+                                <div class="vent-stat"><span class="vent-stat-label">&Delta;T</span><span class="vent-stat-value" id="ventOpenDT">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Amb.</span><span class="vent-stat-value" id="ventOpenAmb">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Q</span><span class="vent-stat-value" id="ventOpenQ">&mdash;</span></div>
+                            </div>
+                            <div id="ventOpenBadge" style="text-align:center;"></div>
+                        </div>
+
+                        <div class="vent-card screen">
+                            <div class="vent-card-icon">&#9641;</div>
+                            <div class="vent-card-title">Vent w/ Screen</div>
+                            <div class="vent-card-desc">Screen/filter reduces airflow ~30% vs open vent</div>
+                            <div class="vent-card-stats">
+                                <div class="vent-stat"><span class="vent-stat-label">&Delta;T</span><span class="vent-stat-value" id="ventScreenDT">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Amb.</span><span class="vent-stat-value" id="ventScreenAmb">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Q</span><span class="vent-stat-value" id="ventScreenQ">&mdash;</span></div>
+                            </div>
+                            <div id="ventScreenBadge" style="text-align:center;"></div>
+                        </div>
+
+                        <div class="vent-card forced">
+                            <div class="vent-card-icon">&#10227;</div>
+                            <div class="vent-card-title">Forced Convection</div>
+                            <div class="vent-card-desc">Fan-driven airflow at the specified CFM</div>
+                            <div class="vent-card-stats">
+                                <div class="vent-stat"><span class="vent-stat-label">&Delta;T</span><span class="vent-stat-value" id="ventForcedDT">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Amb.</span><span class="vent-stat-value" id="ventForcedAmb">&mdash;</span></div>
+                                <div class="vent-stat"><span class="vent-stat-label">Max Q</span><span class="vent-stat-value" id="ventForcedQ">&mdash;</span></div>
+                            </div>
+                            <div id="ventForcedBadge" style="text-align:center;"></div>
+                        </div>
+                    </div>
+
+                    <div class="temp-table-wrap" style="margin-top:1rem;">
+                        <table class="temp-table">
+                            <thead>
+                                <tr>
+                                    <th>Configuration</th>
+                                    <th>k<sub>eff</sub> (W/m&sup2;&middot;&deg;C)</th>
+                                    <th>&Delta;T (&deg;C)</th>
+                                    <th>&Delta;T (&deg;F)</th>
+                                    <th>Max Amb. (&deg;C)</th>
+                                    <th>Max Q @ 40&deg;C (W)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ventTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="chart-container" style="margin-top:1rem;">
+                        <div class="section-title" style="margin-bottom:0.5rem;">Ventilation Comparison &mdash; &Delta;T &amp; Max Dissipation</div>
+                        <canvas id="ventCompareChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                <button class="btn-export" onclick="exportReport()">
+                    &#128196; Export Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calculation Reference Section -->
+    <div class="reference-section">
+        <div class="ref-header">
+            <h2>Calculation Reference</h2>
+            <p>Formulas, constants, and methodology used by this calculator</p>
+        </div>
+        <div class="ref-body">
+
+            <div class="ref-block">
+                <h3>1. Passive Heat Dissipation</h3>
+                <div class="formula-box">
+                    <div class="formula">Q = k &times; A<sub>eff</sub> &times; &Delta;T</div>
+                </div>
+                <table class="ref-table">
+                    <tr><td class="ref-var">Q</td><td>Total heat dissipated by enclosure (Watts)</td></tr>
+                    <tr><td class="ref-var">k</td><td>Overall thermal transmittance coefficient (W/m&sup2;&middot;&deg;C)</td></tr>
+                    <tr><td class="ref-var">A<sub>eff</sub></td><td>Effective external surface area (m&sup2;)</td></tr>
+                    <tr><td class="ref-var">&Delta;T</td><td>Temperature rise above ambient = T<sub>internal</sub> &minus; T<sub>ambient</sub> (&deg;C)</td></tr>
+                </table>
+            </div>
+
+            <div class="ref-block">
+                <h3>2. Temperature Rise</h3>
+                <div class="formula-box">
+                    <div class="formula">&Delta;T = Q / (k &times; A<sub>eff</sub>)</div>
+                </div>
+                <p class="ref-note">Rearranged from the heat dissipation equation. Gives the temperature rise inside the enclosure above the surrounding ambient air temperature for a given heat load.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>3. Maximum Ambient Temperature</h3>
+                <div class="formula-box">
+                    <div class="formula">T<sub>amb(max)</sub> = T<sub>internal(max)</sub> &minus; &Delta;T</div>
+                </div>
+                <p class="ref-note">The highest ambient temperature at which the enclosure can maintain the internal temperature at or below the specified maximum, with no active cooling.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>4. Maximum Heat Dissipation at 40&deg;C Ambient</h3>
+                <div class="formula-box">
+                    <div class="formula">Q<sub>max</sub> = k &times; A<sub>eff</sub> &times; (T<sub>internal(max)</sub> &minus; 40)</div>
+                </div>
+                <p class="ref-note">The maximum watts the enclosure can passively dissipate when the ambient is at the standard baseline of 40&deg;C (104&deg;F).</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>5. Heat from Equipment Efficiency</h3>
+                <div class="formula-box">
+                    <div class="formula">Q<sub>heat</sub> = P<sub>total</sub> &times; (1 &minus; &eta; / 100)</div>
+                </div>
+                <table class="ref-table">
+                    <tr><td class="ref-var">P<sub>total</sub></td><td>Total equipment power consumption (Watts)</td></tr>
+                    <tr><td class="ref-var">&eta;</td><td>Equipment efficiency (%); e.g. 96% for typical network switches</td></tr>
+                    <tr><td class="ref-var">Q<sub>heat</sub></td><td>Waste heat generated (Watts)</td></tr>
+                </table>
+                <p class="ref-note">Example: A 300W device at 96% efficiency produces 300 &times; (1 &minus; 0.96) = 12W of heat.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>6. Effective Surface Area by Mounting Type</h3>
+                <table class="ref-table">
+                    <thead>
+                        <tr><th>Mounting</th><th>Formula</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Wall Mounted</td><td>Front + &frac12;Back + Left + Right + Top</td><td>Back panel against wall (50% effective); bottom excluded</td></tr>
+                        <tr><td>Floor Standing</td><td>Front + &frac12;Back + Left + Right + Top</td><td>Back near wall (50% effective); bottom on floor excluded</td></tr>
+                        <tr><td>Free Standing</td><td>Front + Back + Left + Right + Top</td><td>All sides exposed; bottom excluded</td></tr>
+                        <tr><td>Pole Mounted</td><td>Front + Back + Left + Right + Top</td><td>All sides exposed; bottom excluded</td></tr>
+                    </tbody>
+                </table>
+                <p class="ref-note">Individual panel areas: Front/Back = H&times;W, Left/Right = H&times;D, Top/Bottom = W&times;D.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>7. Thermal Transmittance Coefficients (k)</h3>
+                <table class="ref-table">
+                    <thead>
+                        <tr><th>Material</th><th>k (W/m&sup2;&middot;&deg;C)</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Painted Mild Steel</td><td>5.5</td><td>Standard painted carbon steel enclosure</td></tr>
+                        <tr><td>Stainless Steel (304)</td><td>5.2</td><td>Typical brushed/passivated finish</td></tr>
+                        <tr><td>Aluminum (Painted)</td><td>5.5</td><td>Paint dominates emissivity; same as painted steel</td></tr>
+                        <tr><td>Fiberglass (GRP)</td><td>3.4</td><td>Glass-reinforced polyester, lower conductivity</td></tr>
+                        <tr><td>Polycarbonate</td><td>2.5</td><td>Overall U-value including convection &amp; radiation</td></tr>
+                    </tbody>
+                </table>
+                <p class="ref-note">These are overall heat transfer coefficients (U-values), not material thermal conductivity. They account for convection on both surfaces, radiation, and wall conduction in series.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>8. Forced Airflow (Fan CFM)</h3>
+                <div class="formula-box">
+                    <div class="formula">CFM = (1.76 &times; Q) / &Delta;T</div>
+                </div>
+                <table class="ref-table">
+                    <tr><td class="ref-var">CFM</td><td>Required airflow in cubic feet per minute</td></tr>
+                    <tr><td class="ref-var">Q</td><td>Total heat load to be removed by forced air (Watts)</td></tr>
+                    <tr><td class="ref-var">&Delta;T</td><td>Allowable temperature rise = T<sub>internal(max)</sub> &minus; T<sub>ambient</sub> (&deg;C)</td></tr>
+                    <tr><td class="ref-var">1.76</td><td>Conversion constant: 1 / (volumetric heat capacity of air per CFM&middot;&deg;C) &asymp; 1 / 0.569</td></tr>
+                </table>
+                <p class="ref-note">Assumes ambient air is drawn through the enclosure. Baseline ambient used for CFM sizing: 40&deg;C (104&deg;F).</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>9. Fan with Passive Cooling Combined</h3>
+                <div class="formula-box">
+                    <div class="formula">T<sub>internal</sub> = T<sub>ambient</sub> + Q / (k &times; A<sub>eff</sub> + CFM / 1.76)</div>
+                </div>
+                <p class="ref-note">When a fan is present, the effective thermal conductance increases by CFM/1.76 (W/&deg;C). This combined formula is used for the fan cooling analysis charts and tables.</p>
+            </div>
+
+            <div class="ref-block">
+                <h3>10. Unit Conversions</h3>
+                <table class="ref-table">
+                    <tr><td class="ref-var">&deg;F &rarr; &deg;C</td><td>(&deg;F &minus; 32) &times; 5/9</td></tr>
+                    <tr><td class="ref-var">&deg;C &rarr; &deg;F</td><td>&deg;C &times; 9/5 + 32</td></tr>
+                    <tr><td class="ref-var">mm &rarr; m</td><td>&divide; 1000</td></tr>
+                    <tr><td class="ref-var">in &rarr; m</td><td>&times; 0.0254</td></tr>
+                    <tr><td class="ref-var">cm &rarr; m</td><td>&divide; 100</td></tr>
+                </table>
+            </div>
+
+            <div class="ref-disclaimer">
+                <strong>Disclaimer:</strong> These calculations are based on simplified steady-state models and standard empirical coefficients. Actual thermal performance may vary due to solar loading, internal airflow patterns, gasket condition, altitude, humidity, and other environmental factors. Results should be used as engineering estimates, not as a substitute for detailed thermal analysis or testing.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var lastCalc = null;
+
+        function toggleHeatMode() {
+            const mode = document.getElementById('heatMode').value;
+            document.getElementById('directHeatGroup').style.display = mode === 'direct' ? '' : 'none';
+            document.getElementById('efficiencyGroup').style.display = mode === 'efficiency' ? '' : 'none';
+            if (mode === 'efficiency') {
+                updateHeatFromEfficiency();
+            }
+        }
+
+        function updateHeatFromEfficiency() {
+            const power = parseFloat(document.getElementById('equipPower').value);
+            const eff = parseFloat(document.getElementById('efficiency').value);
+            const display = document.getElementById('calcHeatDisplay');
+            if (power > 0 && eff >= 0 && eff <= 100) {
+                const heat = power * (1 - eff / 100);
+                document.getElementById('calcHeatValue').textContent = heat.toFixed(2);
+                display.style.display = '';
+            } else {
+                display.style.display = 'none';
+            }
+        }
+
+        function getHeatLoad() {
+            const mode = document.getElementById('heatMode').value;
+            if (mode === 'efficiency') {
+                const power = parseFloat(document.getElementById('equipPower').value);
+                const eff = parseFloat(document.getElementById('efficiency').value);
+                if (power > 0 && eff >= 0 && eff <= 100) {
+                    return power * (1 - eff / 100);
+                }
+                return NaN;
+            }
+            return parseFloat(document.getElementById('heatLoad').value);
+        }
+
+        function calculate() {
+            const height = parseFloat(document.getElementById('height').value);
+            const width = parseFloat(document.getElementById('width').value);
+            const depth = parseFloat(document.getElementById('depth').value);
+            const unit = document.getElementById('unit').value;
+            const k = parseFloat(document.getElementById('material').value);
+            const mounting = document.getElementById('mounting').value;
+            const maxInternalC = parseFloat(document.getElementById('maxInternal').value);
+            const heatLoad = getHeatLoad();
+
+            if (!height || !width || !depth || isNaN(heatLoad) || height <= 0 || width <= 0 || depth <= 0 || heatLoad < 0) {
+                alert('Please enter valid positive values for all dimensions and heat load.');
+                return;
+            }
+
+            // Convert dimensions to meters
+            let h, w, d;
+            if (unit === 'mm') {
+                h = height / 1000;
+                w = width / 1000;
+                d = depth / 1000;
+            } else if (unit === 'cm') {
+                h = height / 100;
+                w = width / 100;
+                d = depth / 100;
+            } else {
+                // inches to meters
+                h = height * 0.0254;
+                w = width * 0.0254;
+                d = depth * 0.0254;
+            }
+
+            // Calculate surface areas (m²)
+            const aFront = h * w;
+            const aBack = h * w;
+            const aLeft = h * d;
+            const aRight = h * d;
+            const aTop = w * d;
+            const aBottom = w * d;
+
+            // Effective surface area depends on mounting
+            // Wall mounted: back panel against wall (reduced to 50%), bottom excluded
+            // Floor standing: bottom excluded, back against wall (reduced to 50%)
+            // Free standing: all surfaces active, bottom excluded
+            // Poly mounted: mounted on pole/pedestal — back, sides, top all exposed; bottom excluded
+            let effectiveArea;
+            if (mounting === 'wall') {
+                effectiveArea = aFront + (aBack * 0.5) + aLeft + aRight + aTop;
+            } else if (mounting === 'floor') {
+                effectiveArea = aFront + (aBack * 0.5) + aLeft + aRight + aTop;
+            } else if (mounting === 'pole') {
+                // Pole mount — all sides exposed, bottom excluded
+                effectiveArea = aFront + aBack + aLeft + aRight + aTop;
+            } else {
+                // Free standing — all sides except bottom
+                effectiveArea = aFront + aBack + aLeft + aRight + aTop;
+            }
+
+            // Store for fan calculator
+            lastCalc = { k, effectiveArea, heatLoad, maxInternalC };
+
+            // ΔT = Q / (k × A)
+            const deltaT = heatLoad / (k * effectiveArea);
+
+            // Max ambient temp = Max internal temp - ΔT
+            const maxAmbientC = maxInternalC - deltaT;
+
+            // Max heat dissipation at a given ΔT (using standard 10°C rise as reference)
+            // This shows the max watts the enclosure can dissipate assuming a 10°C temp rise
+            const maxDissipationAtRise = k * effectiveArea * maxInternalC;
+            // More useful: max dissipation for a specific ambient (e.g., 40°C)
+            const standardAmbient = 40;
+            const maxDissipationAt40 = k * effectiveArea * (maxInternalC - standardAmbient);
+
+            // Display results
+            document.getElementById('results').classList.add('visible');
+
+            const ambientRounded = Math.round(maxAmbientC * 10) / 10;
+            const ambientF = Math.round((maxAmbientC * 9 / 5 + 32) * 10) / 10;
+
+            document.getElementById('maxAmbient').textContent = ambientRounded;
+            document.getElementById('maxAmbientUnit').textContent = '°C';
+            document.getElementById('maxAmbientF').textContent = ambientF + ' °F';
+
+            const dissipationRounded = Math.round(maxDissipationAt40 * 10) / 10;
+            document.getElementById('maxDissipation').textContent = dissipationRounded;
+
+            document.getElementById('surfaceArea').textContent = effectiveArea.toFixed(4) + ' m²';
+            document.getElementById('kValue').textContent = k + ' W/m²·°C';
+            document.getElementById('deltaT').textContent = deltaT.toFixed(2) + ' °C';
+
+            // Status badges
+            const ambientCard = document.getElementById('ambientCard');
+            const dissipationCard = document.getElementById('dissipationCard');
+            const ambientBadge = document.getElementById('ambientBadge');
+            const dissipationBadge = document.getElementById('dissipationBadge');
+
+            ambientCard.className = 'result-card';
+            dissipationCard.className = 'result-card';
+
+            if (maxAmbientC >= 35) {
+                ambientBadge.innerHTML = '<span class="status-badge ok">Adequate</span>';
+            } else if (maxAmbientC >= 20) {
+                ambientCard.classList.add('warning');
+                ambientBadge.innerHTML = '<span class="status-badge warning">Limited</span>';
+            } else {
+                ambientCard.classList.add('danger');
+                ambientBadge.innerHTML = '<span class="status-badge danger">Cooling Required</span>';
+            }
+
+            if (heatLoad <= maxDissipationAt40) {
+                dissipationBadge.innerHTML = '<span class="status-badge ok">Within Capacity</span>';
+            } else {
+                dissipationCard.classList.add('danger');
+                dissipationBadge.innerHTML = '<span class="status-badge danger">Exceeds Capacity</span>';
+            }
+
+            // Fan recommendation
+            const fanPanel = document.getElementById('fanRecommendation');
+            const excessHeat = heatLoad - maxDissipationAt40;
+
+            if (excessHeat > 0 || maxAmbientC < 35) {
+                fanPanel.style.display = 'block';
+
+                // CFM = 1.76 × watts / ΔT  — standard forced-air formula
+                // Using a ΔT of (maxInternal - 40) for fan sizing at 40°C ambient
+                const fanDeltaT = maxInternalC - standardAmbient;
+                const requiredCFM = fanDeltaT > 0 ? (1.76 * heatLoad) / fanDeltaT : 1.76 * heatLoad;
+
+                document.getElementById('fanCFM').textContent = requiredCFM.toFixed(1) + ' CFM';
+
+                // Fan size recommendation based on CFM
+                let fanSizeText, fanQty, fanNote;
+                if (requiredCFM <= 20) {
+                    fanSizeText = '80 mm (3.15")';
+                    fanQty = '1';
+                    fanNote = 'A single 80 mm axial fan should provide adequate airflow.';
+                } else if (requiredCFM <= 50) {
+                    fanSizeText = '120 mm (4.7")';
+                    fanQty = '1';
+                    fanNote = 'A single 120 mm axial fan is recommended.';
+                } else if (requiredCFM <= 100) {
+                    fanSizeText = '120 mm (4.7")';
+                    fanQty = '2';
+                    fanNote = 'Use two 120 mm fans — one intake, one exhaust — for cross-flow ventilation.';
+                } else if (requiredCFM <= 200) {
+                    fanSizeText = '172 mm (6.7")';
+                    fanQty = '2';
+                    fanNote = 'Two 172 mm fans recommended. Consider filter kits to maintain IP rating.';
+                } else if (requiredCFM <= 400) {
+                    fanSizeText = '254 mm (10")';
+                    fanQty = '2–3';
+                    fanNote = 'Multiple large fans or a fan tray assembly recommended. Evaluate air conditioning.';
+                } else {
+                    fanSizeText = 'AC Unit / Heat Exchanger';
+                    fanQty = 'N/A';
+                    fanNote = 'Airflow demand exceeds practical fan limits. An enclosure air conditioner or heat exchanger is strongly recommended.';
+                }
+
+                document.getElementById('fanSize').textContent = fanSizeText;
+                document.getElementById('fanQty').textContent = fanQty;
+                document.getElementById('fanNote').textContent = fanNote;
+            } else {
+                fanPanel.style.display = 'none';
+            }
+
+            // --- Temperature Table (10°F to 150°F in 10°F increments) ---
+            const tableBody = document.getElementById('tempTableBody');
+            tableBody.innerHTML = '';
+            const tableData = [];
+
+            for (let ambF = 10; ambF <= 150; ambF += 10) {
+                const ambC = (ambF - 32) * 5 / 9;
+                const intC = ambC + deltaT;
+                const intF = intC * 9 / 5 + 32;
+                const ok = intC <= maxInternalC;
+                const warn = intC > maxInternalC && intC <= maxInternalC + 10;
+                tableData.push({ ambF, ambC, intC, intF, ok, warn });
+
+                const tr = document.createElement('tr');
+                if (intC > maxInternalC + 10) tr.className = 'row-danger';
+                else if (intC > maxInternalC) tr.className = 'row-warn';
+                else tr.className = 'row-ok';
+
+                let statusText, statusClass;
+                if (intC <= maxInternalC) {
+                    statusText = 'OK';
+                    statusClass = 'ok';
+                } else if (intC <= maxInternalC + 10) {
+                    statusText = 'Warning';
+                    statusClass = 'warning';
+                } else {
+                    statusText = 'Exceeds';
+                    statusClass = 'danger';
+                }
+
+                tr.innerHTML = `
+                    <td>${ambF}°F</td>
+                    <td>${ambC.toFixed(1)}°C</td>
+                    <td>${intC.toFixed(1)}°C</td>
+                    <td>${intF.toFixed(1)}°F</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                `;
+                tableBody.appendChild(tr);
+            }
+
+            // --- Draw Chart ---
+            drawChart(tableData, maxInternalC);
+
+            // --- Fan CFM Requirements ---
+            const cfmSection = document.getElementById('fanCfmSection');
+            cfmSection.style.display = 'block';
+            document.getElementById('cfmGoalTemp').textContent = maxInternalC + ' °C';
+
+            const standardAmb = 40; // 40°C ambient baseline for fan sizing
+            const goalDeltaT = maxInternalC - standardAmb;
+            const target55DeltaT = 55 - standardAmb;
+
+            // CFM = 1.76 × totalWatts / ΔT
+            let cfmForGoal, cfmFor55;
+
+            if (goalDeltaT > 0) {
+                cfmForGoal = (1.76 * heatLoad) / goalDeltaT;
+            } else {
+                cfmForGoal = Infinity;
+            }
+
+            if (target55DeltaT > 0) {
+                cfmFor55 = (1.76 * heatLoad) / target55DeltaT;
+            } else {
+                cfmFor55 = Infinity;
+            }
+
+            document.getElementById('cfmGoal').textContent = isFinite(cfmForGoal) ? cfmForGoal.toFixed(1) + ' CFM' : 'N/A';
+            document.getElementById('cfm55').textContent = isFinite(cfmFor55) ? cfmFor55.toFixed(1) + ' CFM' : 'N/A';
+
+            document.getElementById('cfmGoalFan').textContent = fanSizeForCFM(cfmForGoal);
+            document.getElementById('cfm55Fan').textContent = fanSizeForCFM(cfmFor55);
+
+            let cfmNote = 'CFM values assume 40 °C (104 °F) ambient with forced ventilation moving ambient air through the enclosure.';
+            if (maxInternalC <= standardAmb) cfmNote += ' Goal temp ≤ ambient — passive cooling alone cannot meet this target.';
+            document.getElementById('cfmNote').textContent = cfmNote;
+
+            // Ventilation comparison (use existing fan CFM if set)
+            const existingCfm = document.getElementById('fanCfmInput').value;
+            const ventCfm = existingCfm ? parseFloat(existingCfm) : 0;
+            calculateVentilation(ventCfm || 0);
+
+            // Auto-run fan calculator if CFM value already entered
+            if (existingCfm && parseFloat(existingCfm) > 0) {
+                calculateFanCooling();
+            }
+
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function fanSizeForCFM(cfm) {
+            if (!isFinite(cfm)) return 'N/A';
+            if (cfm <= 20) return '1× 80 mm (3.15")';
+            if (cfm <= 50) return '1× 120 mm (4.7")';
+            if (cfm <= 100) return '2× 120 mm (4.7")';
+            if (cfm <= 200) return '2× 172 mm (6.7")';
+            if (cfm <= 400) return '2–3× 254 mm (10")';
+            return 'AC Unit / Heat Exchanger';
+        }
+
+        function drawChart(data, maxInternalC) {
+            const canvas = document.getElementById('tempChart');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 40; // account for container padding
+            const H = 280;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            // Chart margins
+            const ml = 55, mr = 20, mt = 20, mb = 40;
+            const cw = W - ml - mr;
+            const ch = H - mt - mb;
+
+            // Data ranges
+            const ambFs = data.map(d => d.ambF);
+            const intCs = data.map(d => d.intC);
+            const minX = Math.min(...ambFs);
+            const maxX = Math.max(...ambFs);
+            const minY = Math.min(...intCs, maxInternalC - 10) - 5;
+            const maxY = Math.max(...intCs, maxInternalC + 10) + 5;
+
+            function xPos(v) { return ml + (v - minX) / (maxX - minX) * cw; }
+            function yPos(v) { return mt + ch - (v - minY) / (maxY - minY) * ch; }
+
+            // Clear
+            ctx.clearRect(0, 0, W, H);
+
+            // Grid lines
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            const ySteps = 6;
+            for (let i = 0; i <= ySteps; i++) {
+                const v = minY + (maxY - minY) * i / ySteps;
+                const y = yPos(v);
+                ctx.beginPath();
+                ctx.moveTo(ml, y);
+                ctx.lineTo(ml + cw, y);
+                ctx.stroke();
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '11px Segoe UI, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(v.toFixed(0) + '°C', ml - 8, y + 4);
+            }
+
+            // X axis labels
+            ctx.textAlign = 'center';
+            data.forEach(d => {
+                ctx.fillStyle = '#6b7280';
+                ctx.fillText(d.ambF + '°F', xPos(d.ambF), H - mb + 18);
+            });
+
+            // Max internal temp limit line
+            const limitY = yPos(maxInternalC);
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(ml, limitY);
+            ctx.lineTo(ml + cw, limitY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '10px Segoe UI, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Max ' + maxInternalC + '°C', ml + cw - 60, limitY - 6);
+
+            // 55°C reference line
+            if (55 >= minY && 55 <= maxY) {
+                const ref55Y = yPos(55);
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 3]);
+                ctx.beginPath();
+                ctx.moveTo(ml, ref55Y);
+                ctx.lineTo(ml + cw, ref55Y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillText('55°C', ml + 4, ref55Y - 5);
+            }
+
+            // Data line
+            ctx.strokeStyle = '#1b6ca8';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            data.forEach((d, i) => {
+                const x = xPos(d.ambF);
+                const y = yPos(d.intC);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Data points
+            data.forEach(d => {
+                const x = xPos(d.ambF);
+                const y = yPos(d.intC);
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                if (d.intC > maxInternalC) {
+                    ctx.fillStyle = '#ef4444';
+                } else {
+                    ctx.fillStyle = '#1b6ca8';
+                }
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+        }
+
+        function calculateFanCooling() {
+            if (!lastCalc) { alert('Run the main calculation first.'); return; }
+            const cfm = parseFloat(document.getElementById('fanCfmInput').value);
+            if (isNaN(cfm) || cfm < 0) { alert('Please enter a valid CFM value.'); return; }
+
+            const { k, effectiveArea, heatLoad, maxInternalC } = lastCalc;
+
+            // Combined cooling: passive + forced-air
+            // T_internal = T_ambient + Q / (k×A + CFM/1.76)
+            const passiveCoeff = k * effectiveArea;
+            const fanCoeff = cfm / 1.76;
+            const combinedCoeff = passiveCoeff + fanCoeff;
+
+            const deltaTFan = heatLoad / combinedCoeff;
+            const deltaTPassive = heatLoad / passiveCoeff;
+
+            // Max ambient with fan
+            const maxAmbFan = maxInternalC - deltaTFan;
+            const maxAmbFanF = maxAmbFan * 9 / 5 + 32;
+
+            // Internal at 40°C ambient
+            const intAt40 = 40 + deltaTFan;
+            const intAt40F = intAt40 * 9 / 5 + 32;
+
+            // Show results
+            document.getElementById('fanCalcResults').style.display = 'block';
+            document.getElementById('fanMaxAmbient').textContent = maxAmbFan.toFixed(1);
+            document.getElementById('fanMaxAmbientUnit').textContent = '°C (' + maxAmbFanF.toFixed(1) + '°F)';
+            document.getElementById('fanInternal40').textContent = intAt40.toFixed(1);
+            document.getElementById('fanInternal40Unit').textContent = '°C (' + intAt40F.toFixed(1) + '°F)';
+
+            // Badges
+            const fanAmbCard = document.getElementById('fanAmbientCard');
+            fanAmbCard.className = 'result-card';
+            if (maxAmbFan >= 35) {
+                document.getElementById('fanAmbientBadge').innerHTML = '<span class="status-badge ok">Adequate</span>';
+            } else if (maxAmbFan >= 20) {
+                fanAmbCard.classList.add('warning');
+                document.getElementById('fanAmbientBadge').innerHTML = '<span class="status-badge warning">Limited</span>';
+            } else {
+                fanAmbCard.classList.add('danger');
+                document.getElementById('fanAmbientBadge').innerHTML = '<span class="status-badge danger">Insufficient</span>';
+            }
+
+            const fanIntCard = document.getElementById('fanInternalCard');
+            fanIntCard.className = 'result-card';
+            if (intAt40 <= maxInternalC) {
+                document.getElementById('fanInternalBadge').innerHTML = '<span class="status-badge ok">Within Limit</span>';
+            } else {
+                fanIntCard.classList.add('danger');
+                document.getElementById('fanInternalBadge').innerHTML = '<span class="status-badge danger">Exceeds Limit</span>';
+            }
+
+            // Improvement box
+            const reduction = deltaTPassive - deltaTFan;
+            document.getElementById('fanDeltaT').textContent = deltaTFan.toFixed(2) + ' °C';
+            document.getElementById('passiveDeltaT').textContent = deltaTPassive.toFixed(2) + ' °C';
+            document.getElementById('fanTempReduction').textContent = reduction.toFixed(2) + ' °C';
+
+            const improvBox = document.getElementById('fanImprovementBox');
+            if (reduction > 0.1) {
+                improvBox.style.display = 'flex';
+                document.getElementById('fanImprovementText').textContent =
+                    'Fan reduces internal temperature by ' + reduction.toFixed(1) + '°C (' + (reduction * 9 / 5).toFixed(1) + '°F) compared to passive cooling alone.';
+            } else {
+                improvBox.style.display = 'none';
+            }
+
+            // Table: internal temp at each ambient with fan
+            const fanTableBody = document.getElementById('fanTempTableBody');
+            fanTableBody.innerHTML = '';
+            for (let ambF = 10; ambF <= 150; ambF += 10) {
+                const ambC = (ambF - 32) * 5 / 9;
+                const intC = ambC + deltaTFan;
+                const intF = intC * 9 / 5 + 32;
+                const tr = document.createElement('tr');
+                let statusText, statusClass;
+                if (intC <= maxInternalC) {
+                    tr.className = 'row-ok'; statusText = 'OK'; statusClass = 'ok';
+                } else if (intC <= maxInternalC + 10) {
+                    tr.className = 'row-warn'; statusText = 'Warning'; statusClass = 'warning';
+                } else {
+                    tr.className = 'row-danger'; statusText = 'Exceeds'; statusClass = 'danger';
+                }
+                tr.innerHTML = '<td>' + ambF + '°F</td>' +
+                    '<td>' + ambC.toFixed(1) + '°C</td>' +
+                    '<td>' + intC.toFixed(1) + '°C</td>' +
+                    '<td>' + intF.toFixed(1) + '°F</td>' +
+                    '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>';
+                fanTableBody.appendChild(tr);
+            }
+
+            // Draw fan CFM chart
+            drawFanCfmChart(cfm);
+
+            // Draw ΔT comparison table & chart
+            drawDeltaTComparison(cfm);
+
+            // Update ventilation section with fan CFM
+            calculateVentilation(cfm);
+
+            document.getElementById('fanCalcResults').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function drawFanCfmChart(userCfm) {
+            const { k, effectiveArea, heatLoad, maxInternalC } = lastCalc;
+            const standardAmb = 40;
+
+            const canvas = document.getElementById('fanCfmChart');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 40;
+            const H = 280;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const ml = 55, mr = 20, mt = 25, mb = 40;
+            const cw = W - ml - mr;
+            const ch = H - mt - mb;
+
+            // Passive-only temp at 40°C
+            const passiveTemp = standardAmb + heatLoad / (k * effectiveArea);
+
+            // Determine CFM range
+            // CFM where temp = ambient + 2°C
+            const cfmFor2Rise = Math.max(0, (heatLoad / 2 - k * effectiveArea) * 1.76);
+            const maxCfm = Math.max(100, cfmFor2Rise, userCfm * 2);
+            const cfmStep = maxCfm <= 100 ? 5 : maxCfm <= 300 ? 10 : maxCfm <= 600 ? 20 : 50;
+            const roundedMaxCfm = Math.ceil(maxCfm / cfmStep) * cfmStep;
+
+            const data = [];
+            for (let c = 0; c <= roundedMaxCfm; c += cfmStep) {
+                const coeff = k * effectiveArea + c / 1.76;
+                data.push({ cfm: c, intTemp: standardAmb + heatLoad / coeff });
+            }
+
+            const temps = data.map(d => d.intTemp);
+            const minX = 0, maxX = roundedMaxCfm;
+            const minY = Math.min(standardAmb - 2, ...temps) - 2;
+            const maxY = Math.max(passiveTemp, maxInternalC + 5, ...temps) + 2;
+
+            function xPos(v) { return ml + (v - minX) / (maxX - minX) * cw; }
+            function yPos(v) { return mt + ch - (v - minY) / (maxY - minY) * ch; }
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Grid
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            var ySteps = 6;
+            for (var i = 0; i <= ySteps; i++) {
+                var v = minY + (maxY - minY) * i / ySteps;
+                var y = yPos(v);
+                ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml + cw, y); ctx.stroke();
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '11px Segoe UI, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(v.toFixed(0) + '°C', ml - 8, y + 4);
+            }
+
+            // X labels
+            var xLabelEvery = Math.max(1, Math.floor(data.length / 10));
+            ctx.textAlign = 'center';
+            data.forEach(function(d, idx) {
+                if (idx % xLabelEvery === 0 || idx === data.length - 1) {
+                    ctx.fillStyle = '#6b7280';
+                    ctx.fillText(d.cfm + '', xPos(d.cfm), H - mb + 18);
+                }
+            });
+            ctx.fillText('CFM', ml + cw / 2, H - 2);
+
+            // Max internal temp line
+            if (maxInternalC >= minY && maxInternalC <= maxY) {
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath(); ctx.moveTo(ml, yPos(maxInternalC)); ctx.lineTo(ml + cw, yPos(maxInternalC)); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ef4444'; ctx.font = '10px Segoe UI, sans-serif'; ctx.textAlign = 'left';
+                ctx.fillText('Max ' + maxInternalC + '°C', ml + cw - 65, yPos(maxInternalC) - 6);
+            }
+
+            // 55°C line
+            if (55 >= minY && 55 <= maxY) {
+                ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1;
+                ctx.setLineDash([4, 3]);
+                ctx.beginPath(); ctx.moveTo(ml, yPos(55)); ctx.lineTo(ml + cw, yPos(55)); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f59e0b'; ctx.fillText('55°C', ml + 4, yPos(55) - 5);
+            }
+
+            // 40°C ambient line
+            if (standardAmb >= minY && standardAmb <= maxY) {
+                ctx.strokeStyle = '#10b981'; ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath(); ctx.moveTo(ml, yPos(standardAmb)); ctx.lineTo(ml + cw, yPos(standardAmb)); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#10b981'; ctx.textAlign = 'left';
+                ctx.fillText('Ambient 40°C', ml + 4, yPos(standardAmb) + 14);
+            }
+
+            // Data curve
+            ctx.strokeStyle = '#1b6ca8'; ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            data.forEach(function(d, idx) {
+                var x = xPos(d.cfm), y = yPos(d.intTemp);
+                if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Points
+            data.forEach(function(d) {
+                var x = xPos(d.cfm), y = yPos(d.intTemp);
+                ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = d.intTemp > maxInternalC ? '#ef4444' : '#1b6ca8';
+                ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+            });
+
+            // User CFM marker
+            if (userCfm > 0 && userCfm <= maxX) {
+                var ux = xPos(userCfm);
+                var userCoeff = k * effectiveArea + userCfm / 1.76;
+                var userTemp = standardAmb + heatLoad / userCoeff;
+                var uy = yPos(userTemp);
+
+                ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 1.5;
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath(); ctx.moveTo(ux, mt); ctx.lineTo(ux, mt + ch); ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.beginPath(); ctx.arc(ux, uy, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#7c3aed'; ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+                ctx.fillStyle = '#7c3aed';
+                ctx.font = 'bold 11px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(userTemp.toFixed(1) + '°C @ ' + userCfm + ' CFM', ux, uy - 14);
+            }
+        }
+
+        // Allow Enter key to trigger calculation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                calculate();
+            }
+        });
+
+        function drawDeltaTComparison(cfm) {
+            const { k, effectiveArea, maxInternalC } = lastCalc;
+            const passiveCoeff = k * effectiveArea;
+            const fanCoeff = cfm / 1.76;
+            const combinedCoeff = passiveCoeff + fanCoeff;
+
+            // Build data: 0 to 200W in 15W steps, include 200 as final
+            const heatSteps = [];
+            for (let q = 0; q <= 195; q += 15) heatSteps.push(q);
+            if (heatSteps[heatSteps.length - 1] !== 200) heatSteps.push(200);
+
+            const data = heatSteps.map(function(q) {
+                const dtPassive = q / passiveCoeff;
+                const dtFan = q / combinedCoeff;
+                return { q: q, dtPassive: dtPassive, dtFan: dtFan, reduction: dtPassive - dtFan };
+            });
+
+            // Populate table
+            const tbody = document.getElementById('deltaTCompareBody');
+            tbody.innerHTML = '';
+            data.forEach(function(d) {
+                const tr = document.createElement('tr');
+                const reductionF = d.reduction * 9 / 5;
+                tr.innerHTML = '<td>' + d.q + ' W</td>' +
+                    '<td>' + d.dtPassive.toFixed(2) + '</td>' +
+                    '<td>' + d.dtFan.toFixed(2) + '</td>' +
+                    '<td>' + d.reduction.toFixed(2) + '</td>' +
+                    '<td>' + reductionF.toFixed(2) + '</td>';
+                tbody.appendChild(tr);
+            });
+
+            // Draw chart
+            const canvas = document.getElementById('deltaTCompareChart');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const W = rect.width - 40;
+            const H = 300;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const ml = 55, mr = 20, mt = 25, mb = 50;
+            const cw = W - ml - mr;
+            const ch = H - mt - mb;
+
+            const maxQ = 200;
+            const allDT = data.map(function(d) { return d.dtPassive; });
+            const maxDT = Math.max(5, Math.ceil(Math.max.apply(null, allDT) * 1.15));
+
+            function xPos(v) { return ml + v / maxQ * cw; }
+            function yPos(v) { return mt + ch - v / maxDT * ch; }
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Grid lines
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            var ySteps = 6;
+            for (var i = 0; i <= ySteps; i++) {
+                var v = maxDT * i / ySteps;
+                var y = yPos(v);
+                ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml + cw, y); ctx.stroke();
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '11px Segoe UI, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(v.toFixed(1) + '°C', ml - 8, y + 4);
+            }
+
+            // X labels
+            ctx.textAlign = 'center';
+            data.forEach(function(d) {
+                if (d.q % 30 === 0 || d.q === 200) {
+                    ctx.fillStyle = '#6b7280';
+                    ctx.fillText(d.q + 'W', xPos(d.q), H - mb + 18);
+                }
+            });
+            ctx.fillText('Heat Load (Watts)', ml + cw / 2, H - 5);
+
+            // Y-axis label
+            ctx.save();
+            ctx.translate(14, mt + ch / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '11px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('ΔT (°C)', 0, 0);
+            ctx.restore();
+
+            // Passive line (red-orange)
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            data.forEach(function(d, idx) {
+                var x = xPos(d.q), y = yPos(d.dtPassive);
+                if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Fan line (blue)
+            ctx.strokeStyle = '#1b6ca8';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            data.forEach(function(d, idx) {
+                var x = xPos(d.q), y = yPos(d.dtFan);
+                if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Points — passive
+            data.forEach(function(d) {
+                var x = xPos(d.q), y = yPos(d.dtPassive);
+                ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+            });
+
+            // Points — fan
+            data.forEach(function(d) {
+                var x = xPos(d.q), y = yPos(d.dtFan);
+                ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#1b6ca8'; ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+            });
+
+            // Current heat load marker
+            var currentQ = lastCalc.heatLoad;
+            if (currentQ >= 0 && currentQ <= maxQ) {
+                var cx = xPos(currentQ);
+                ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 1.5;
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath(); ctx.moveTo(cx, mt); ctx.lineTo(cx, mt + ch); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#7c3aed'; ctx.font = 'bold 10px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Current ' + currentQ.toFixed(0) + 'W', cx, mt - 6);
+            }
+
+            // Legend
+            var lx = ml + 10, ly = mt + 12;
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(lx, ly - 5, 16, 3);
+            ctx.fillStyle = '#374151'; ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText('Passive ΔT', lx + 22, ly);
+
+            ly += 16;
+            ctx.fillStyle = '#1b6ca8';
+            ctx.fillRect(lx, ly - 5, 16, 3);
+            ctx.fillStyle = '#374151';
+            ctx.fillText('Fan ΔT (' + cfm + ' CFM)', lx + 22, ly);
+        }
+
+        // ---- Ventilation Thermal Comparison ----
+        function calculateVentilation(cfm) {
+            if (!lastCalc) return;
+            const { k, effectiveArea, heatLoad, maxInternalC } = lastCalc;
+
+            // Ventilation multipliers for effective k:
+            // Sealed: baseline k (already calculated)
+            // Vent open: natural convection through openings adds ~80% to effective heat transfer
+            // Vent with screen: screen restricts ~30% of open vent gain → adds ~56%
+            // Forced convection: fan-driven (passive + CFM/1.76)
+            const kSealed = k;
+            const kOpen = k * 1.80;
+            const kScreen = k * 1.56;
+
+            const passiveCoeff = kSealed * effectiveArea;
+            const openCoeff = kOpen * effectiveArea;
+            const screenCoeff = kScreen * effectiveArea;
+            const forcedCfm = cfm || 0;
+            const forcedCoeff = passiveCoeff + (forcedCfm / 1.76);
+
+            const configs = [
+                { id: 'Sealed', label: 'Sealed Enclosure', kEff: kSealed, coeff: passiveCoeff, color: '#6b7280' },
+                { id: 'Open', label: 'Vent Open', kEff: kOpen, coeff: openCoeff, color: '#10b981' },
+                { id: 'Screen', label: 'Vent w/ Screen', kEff: kScreen, coeff: screenCoeff, color: '#f59e0b' },
+                { id: 'Forced', label: 'Forced Convection', kEff: forcedCfm > 0 ? 'Fan' : kSealed, coeff: forcedCoeff, color: '#1b6ca8' }
+            ];
+
+            const stdAmb = 40;
+
+            configs.forEach(function(cfg) {
+                const dt = heatLoad / cfg.coeff;
+                const dtF = dt * 9 / 5;
+                const maxAmb = maxInternalC - dt;
+                const maxQ = cfg.coeff * (maxInternalC - stdAmb);
+
+                // Cards
+                document.getElementById('vent' + cfg.id + 'DT').textContent = dt.toFixed(2) + ' °C';
+                document.getElementById('vent' + cfg.id + 'Amb').textContent = maxAmb.toFixed(1) + ' °C';
+                document.getElementById('vent' + cfg.id + 'Q').textContent = maxQ.toFixed(0) + ' W';
+
+                var badge = document.getElementById('vent' + cfg.id + 'Badge');
+                if (maxAmb >= 35) {
+                    badge.innerHTML = '<span class="status-badge ok">Adequate</span>';
+                } else if (maxAmb >= 20) {
+                    badge.innerHTML = '<span class="status-badge warning">Limited</span>';
+                } else {
+                    badge.innerHTML = '<span class="status-badge danger">Insufficient</span>';
+                }
+            });
+
+            // Table
+            var tbody = document.getElementById('ventTableBody');
+            tbody.innerHTML = '';
+            configs.forEach(function(cfg) {
+                var dt = heatLoad / cfg.coeff;
+                var dtF = dt * 9 / 5;
+                var maxAmb = maxInternalC - dt;
+                var maxQ = cfg.coeff * (maxInternalC - stdAmb);
+                var kDisplay = cfg.id === 'Forced' ? (forcedCfm > 0 ? 'Fan + ' + kSealed : kSealed.toFixed(1)) : cfg.kEff.toFixed(2);
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + cfg.label + (cfg.id === 'Forced' && forcedCfm > 0 ? ' (' + forcedCfm + ' CFM)' : '') + '</td>' +
+                    '<td>' + kDisplay + '</td>' +
+                    '<td>' + dt.toFixed(2) + '</td>' +
+                    '<td>' + dtF.toFixed(2) + '</td>' +
+                    '<td>' + maxAmb.toFixed(1) + '</td>' +
+                    '<td>' + maxQ.toFixed(0) + '</td>';
+                tbody.appendChild(tr);
+            });
+
+            // Chart: grouped bar — ΔT and Max Q for each config
+            drawVentChart(configs, heatLoad, maxInternalC, stdAmb);
+        }
+
+        function drawVentChart(configs, heatLoad, maxInternalC, stdAmb) {
+            var canvas = document.getElementById('ventCompareChart');
+            var dpr = window.devicePixelRatio || 1;
+            var rect = canvas.parentElement.getBoundingClientRect();
+            var W = rect.width - 40;
+            var H = 280;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            var ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            var ml = 55, mr = 20, mt = 30, mb = 55;
+            var cw = W - ml - mr;
+            var ch = H - mt - mb;
+
+            var barData = configs.map(function(cfg) {
+                var dt = heatLoad / cfg.coeff;
+                var maxQ = cfg.coeff * (maxInternalC - stdAmb);
+                return { label: cfg.label.replace('Vent ', '').replace('Enclosure', ''), dt: dt, maxQ: maxQ, color: cfg.color };
+            });
+
+            // Use ΔT on left axis
+            var maxDT = Math.max(5, Math.ceil(Math.max.apply(null, barData.map(function(d) { return d.dt; })) * 1.2));
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Grid
+            ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+            for (var i = 0; i <= 5; i++) {
+                var v = maxDT * i / 5;
+                var y = mt + ch - v / maxDT * ch;
+                ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml + cw, y); ctx.stroke();
+                ctx.fillStyle = '#6b7280'; ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'right';
+                ctx.fillText(v.toFixed(1) + '°C', ml - 8, y + 4);
+            }
+
+            // Bars
+            var barGroupWidth = cw / barData.length;
+            var barWidth = Math.min(60, barGroupWidth * 0.6);
+            var gap = (barGroupWidth - barWidth) / 2;
+
+            barData.forEach(function(d, idx) {
+                var x = ml + idx * barGroupWidth + gap;
+                var barH = (d.dt / maxDT) * ch;
+                var y = mt + ch - barH;
+
+                // Bar fill
+                ctx.fillStyle = d.color;
+                ctx.beginPath();
+                var r = Math.min(4, barWidth / 4);
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + barWidth - r, y);
+                ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + r);
+                ctx.lineTo(x + barWidth, mt + ch);
+                ctx.lineTo(x, mt + ch);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.fill();
+
+                // Label inside bar: ΔT value
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                if (barH > 30) {
+                    ctx.fillText(d.dt.toFixed(1) + '°C', x + barWidth / 2, y + 18);
+                } else {
+                    ctx.fillStyle = d.color;
+                    ctx.fillText(d.dt.toFixed(1) + '°C', x + barWidth / 2, y - 6);
+                }
+
+                // Max Q label below
+                ctx.fillStyle = '#374151';
+                ctx.font = '10px Segoe UI, sans-serif';
+                ctx.fillText(d.maxQ.toFixed(0) + 'W', x + barWidth / 2, mt + ch + 15);
+
+                // Config label
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '10px Segoe UI, sans-serif';
+                var words = d.label.split(' ');
+                words.forEach(function(word, wi) {
+                    ctx.fillText(word, x + barWidth / 2, mt + ch + 28 + wi * 11);
+                });
+            });
+
+            // Y-axis label
+            ctx.save();
+            ctx.translate(14, mt + ch / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#6b7280'; ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('ΔT (°C)', 0, 0);
+            ctx.restore();
+
+            // Legend at top
+            ctx.fillStyle = '#374151'; ctx.font = '10px Segoe UI, sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText('Bar = ΔT  |  Below = Max Dissipation @ 40°C', ml, mt - 10);
+        }
+
+        // ---- Export Report ----
+        function exportReport() {
+            if (!lastCalc) { alert('Run the calculation first.'); return; }
+            var { k, effectiveArea, heatLoad, maxInternalC } = lastCalc;
+
+            var deltaT = heatLoad / (k * effectiveArea);
+            var maxAmbC = maxInternalC - deltaT;
+            var maxAmbF = maxAmbC * 9 / 5 + 32;
+            var maxQ40 = k * effectiveArea * (maxInternalC - 40);
+
+            var lines = [];
+            lines.push('THERMAL LOAD CALCULATOR — REPORT');
+            lines.push('Generated: ' + new Date().toLocaleString());
+            lines.push('═'.repeat(50));
+            lines.push('');
+
+            // Input summary
+            var height = document.getElementById('height').value;
+            var width = document.getElementById('width').value;
+            var depth = document.getElementById('depth').value;
+            var unit = document.getElementById('unit').value;
+            var matSelect = document.getElementById('material');
+            var matText = matSelect.options[matSelect.selectedIndex].text;
+            var mountSelect = document.getElementById('mounting');
+            var mountText = mountSelect.options[mountSelect.selectedIndex].text;
+
+            lines.push('INPUTS');
+            lines.push('─'.repeat(50));
+            lines.push('Enclosure Dimensions: ' + height + ' x ' + width + ' x ' + depth + ' ' + unit);
+            lines.push('Material: ' + matText);
+            lines.push('Mounting: ' + mountText);
+            lines.push('Max Internal Temperature: ' + maxInternalC + ' °C (' + (maxInternalC * 9/5 + 32) + ' °F)');
+            lines.push('Heat Load: ' + heatLoad.toFixed(2) + ' W');
+            lines.push('');
+
+            // Results
+            lines.push('RESULTS — SEALED ENCLOSURE');
+            lines.push('─'.repeat(50));
+            lines.push('Effective Surface Area: ' + effectiveArea.toFixed(4) + ' m²');
+            lines.push('Thermal Transmittance (k): ' + k + ' W/m²·°C');
+            lines.push('Temperature Rise (ΔT): ' + deltaT.toFixed(2) + ' °C (' + (deltaT * 9/5).toFixed(2) + ' °F)');
+            lines.push('Max Ambient Temperature: ' + maxAmbC.toFixed(1) + ' °C (' + maxAmbF.toFixed(1) + ' °F)');
+            lines.push('Max Heat Dissipation @ 40°C: ' + maxQ40.toFixed(1) + ' W');
+            lines.push('');
+
+            // Ventilation comparison
+            var kOpen = k * 1.80;
+            var kScreen = k * 1.56;
+            var cfmInput = document.getElementById('fanCfmInput').value;
+            var cfm = parseFloat(cfmInput) || 0;
+
+            lines.push('VENTILATION COMPARISON');
+            lines.push('─'.repeat(50));
+            var ventConfigs = [
+                { label: 'Sealed', coeff: k * effectiveArea },
+                { label: 'Vent Open', coeff: kOpen * effectiveArea },
+                { label: 'Vent w/ Screen', coeff: kScreen * effectiveArea },
+                { label: 'Forced (' + cfm + ' CFM)', coeff: k * effectiveArea + cfm / 1.76 }
+            ];
+            lines.push(padRight('Configuration', 22) + padRight('ΔT (°C)', 12) + padRight('ΔT (°F)', 12) + padRight('Max Amb (°C)', 14) + 'Max Q @ 40°C (W)');
+            ventConfigs.forEach(function(vc) {
+                var vdt = heatLoad / vc.coeff;
+                var vdtF = vdt * 9 / 5;
+                var vAmb = maxInternalC - vdt;
+                var vQ = vc.coeff * (maxInternalC - 40);
+                lines.push(padRight(vc.label, 22) + padRight(vdt.toFixed(2), 12) + padRight(vdtF.toFixed(2), 12) + padRight(vAmb.toFixed(1), 14) + vQ.toFixed(0));
+            });
+            lines.push('');
+
+            // Temperature table
+            lines.push('INTERNAL TEMPERATURE vs. AMBIENT (SEALED)');
+            lines.push('─'.repeat(50));
+            lines.push(padRight('Amb (°F)', 12) + padRight('Amb (°C)', 12) + padRight('Int (°C)', 12) + padRight('Int (°F)', 12) + 'Status');
+            for (var ambF = 10; ambF <= 150; ambF += 10) {
+                var ambC = (ambF - 32) * 5 / 9;
+                var intC = ambC + deltaT;
+                var intF = intC * 9 / 5 + 32;
+                var status = intC <= maxInternalC ? 'OK' : intC <= maxInternalC + 10 ? 'Warning' : 'Exceeds';
+                lines.push(padRight(ambF + '', 12) + padRight(ambC.toFixed(1), 12) + padRight(intC.toFixed(1), 12) + padRight(intF.toFixed(1), 12) + status);
+            }
+            lines.push('');
+
+            // Fan section
+            if (cfm > 0) {
+                var fanCoeff = k * effectiveArea + cfm / 1.76;
+                var fanDT = heatLoad / fanCoeff;
+                var fanMaxAmb = maxInternalC - fanDT;
+                lines.push('FAN ANALYSIS (' + cfm + ' CFM)');
+                lines.push('─'.repeat(50));
+                lines.push('ΔT with fan: ' + fanDT.toFixed(2) + ' °C');
+                lines.push('ΔT passive: ' + deltaT.toFixed(2) + ' °C');
+                lines.push('Reduction: ' + (deltaT - fanDT).toFixed(2) + ' °C');
+                lines.push('Max Ambient w/ Fan: ' + fanMaxAmb.toFixed(1) + ' °C (' + (fanMaxAmb * 9/5 + 32).toFixed(1) + ' °F)');
+                lines.push('');
+
+                lines.push('ΔT COMPARISON — PASSIVE vs. FAN @ VARYING HEAT LOADS');
+                lines.push('─'.repeat(50));
+                lines.push(padRight('Heat (W)', 12) + padRight('ΔT Pass (°C)', 15) + padRight('ΔT Fan (°C)', 14) + 'Reduction (°C)');
+                for (var q = 0; q <= 200; q += 15) {
+                    var pdt = q / (k * effectiveArea);
+                    var fdt = q / fanCoeff;
+                    lines.push(padRight(q + '', 12) + padRight(pdt.toFixed(2), 15) + padRight(fdt.toFixed(2), 14) + (pdt - fdt).toFixed(2));
+                }
+                if (200 % 15 !== 0) {
+                    var pdt200 = 200 / (k * effectiveArea);
+                    var fdt200 = 200 / fanCoeff;
+                    lines.push(padRight('200', 12) + padRight(pdt200.toFixed(2), 15) + padRight(fdt200.toFixed(2), 14) + (pdt200 - fdt200).toFixed(2));
+                }
+                lines.push('');
+            }
+
+            lines.push('═'.repeat(50));
+            lines.push('Disclaimer: Steady-state estimates only. Actual performance');
+            lines.push('may vary due to environmental factors and installation conditions.');
+
+            var blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'Thermal_Load_Report_' + new Date().toISOString().slice(0, 10) + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function padRight(str, len) {
+            str = String(str);
+            while (str.length < len) str += ' ';
+            return str;
+        }
+    </script>
+</body>
+</html>
