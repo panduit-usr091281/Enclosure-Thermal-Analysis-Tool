@@ -805,7 +805,14 @@
                     </div>
                 </div>
 
-                <div class="temp-table-wrap">
+                <div id="passiveDetailToggle" style="display:none; margin-bottom:0.75rem;">
+                    <button onclick="togglePassiveDetail()" style="background:none; border:1px solid #d1d5db; border-radius:6px; padding:0.4rem 0.9rem; font-size:0.8rem; color:#4b5563; cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem;">
+                        <span id="passiveToggleArrow">&#9654;</span> Show passive temperature detail
+                    </button>
+                </div>
+
+                <div id="passiveDetailSection">
+                <div class="temp-table-wrap" id="passiveTempTableWrap">
                     <table class="temp-table">
                         <thead>
                             <tr>
@@ -820,8 +827,9 @@
                     </table>
                 </div>
 
-                <div class="chart-container">
+                <div class="chart-container" id="passiveChartWrap">
                     <canvas id="tempChart"></canvas>
+                </div>
                 </div>
 
                 <div class="divider"></div>
@@ -1500,17 +1508,37 @@
             if (maxInternalC <= standardAmb) cfmNote += ' Goal temp ≤ ambient — passive cooling alone cannot meet this target.';
             document.getElementById('cfmNote').textContent = cfmNote;
 
-            // Ventilation comparison (use existing fan CFM if set)
-            const existingCfm = document.getElementById('fanCfmInput').value;
-            const ventCfm = existingCfm ? parseFloat(existingCfm) : 0;
-            calculateVentilation(ventCfm || 0);
+            // When fan is required: collapse passive detail & prefill recommended CFM
+            const fanRequired = (excessHeat > 0 || maxAmbientF_check < 60);
+            document.getElementById('passiveDetailToggle').style.display = fanRequired ? 'block' : 'none';
+            document.getElementById('passiveDetailSection').style.display = fanRequired ? 'none' : '';
 
-            // Auto-run fan calculator if CFM value already entered
-            if (existingCfm && parseFloat(existingCfm) > 0) {
+            if (fanRequired && isFinite(requiredCFM) && requiredCFM > 0) {
+                document.getElementById('fanCfmInput').value = Math.ceil(requiredCFM);
+            }
+
+            // Ventilation comparison (use fan CFM — prefilled or user-entered)
+            const currentCfm = parseFloat(document.getElementById('fanCfmInput').value) || 0;
+            calculateVentilation(currentCfm);
+
+            // Auto-run fan calculator if CFM value is set (prefilled or previously entered)
+            if (currentCfm > 0) {
                 calculateFanCooling();
             }
 
             document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function togglePassiveDetail() {
+            var section = document.getElementById('passiveDetailSection');
+            var arrow = document.getElementById('passiveToggleArrow');
+            if (section.style.display === 'none') {
+                section.style.display = '';
+                arrow.innerHTML = '&#9660;';
+            } else {
+                section.style.display = 'none';
+                arrow.innerHTML = '&#9654;';
+            }
         }
 
         function fanSizeForCFM(cfm) {
