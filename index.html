@@ -1134,6 +1134,8 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script>
         var lastCalc = null;
 
@@ -1320,11 +1322,12 @@
                 dissipationBadge.innerHTML = '<span class="status-badge danger">Exceeds Capacity</span>';
             }
 
-            // Fan recommendation
+            // Fan recommendation — trigger if max ambient < 60°F (15.56°C) or heat exceeds capacity
             const fanPanel = document.getElementById('fanRecommendation');
             const excessHeat = totalHeat - maxDissipationAt40;
+            const maxAmbientF_check = maxAmbientC * 9 / 5 + 32;
 
-            if (excessHeat > 0 || maxAmbientC < 35) {
+            if (excessHeat > 0 || maxAmbientF_check < 60) {
                 fanPanel.style.display = 'block';
 
                 // CFM = 1.76 × watts / ΔT  — standard forced-air formula
@@ -2165,20 +2168,63 @@
         // ---- Export Report ----
         function exportReport() {
             if (!lastCalc) { alert('Run the calculation first.'); return; }
-            var { k, effectiveArea, heatLoad, maxInternalC } = lastCalc;
+            var { jsPDF } = window.jspdf;
+            var doc = new jsPDF('p', 'mm', 'a4');
+            var pageW = doc.internal.pageSize.getWidth();
+            var margin = 15;
+            var y = 15;
+            var colW = pageW - 2 * margin;
 
+            var { k, effectiveArea, heatLoad, maxInternalC } = lastCalc;
             var deltaT = heatLoad / (k * effectiveArea);
             var maxAmbC = maxInternalC - deltaT;
             var maxAmbF = maxAmbC * 9 / 5 + 32;
             var maxQ40 = k * effectiveArea * (maxInternalC - 40);
 
-            var lines = [];
-            lines.push('THERMAL LOAD CALCULATOR — REPORT');
-            lines.push('Generated: ' + new Date().toLocaleString());
-            lines.push('═'.repeat(50));
-            lines.push('');
+            // Helper: check page space
+            function checkPage(needed) {
+                if (y + needed > 275) { doc.addPage(); y = 15; }
+            }
 
-            // Input summary
+            // Title bar
+            doc.setFillColor(15, 76, 117);
+            doc.rect(0, 0, pageW, 22, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Enclosure Thermal Analysis Report', margin, 14);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Generated: ' + new Date().toLocaleString(), pageW - margin, 14, { align: 'right' });
+            y = 30;
+
+            // Section helper
+            function sectionTitle(title) {
+                checkPage(12);
+                doc.setFillColor(241, 245, 249);
+                doc.rect(margin, y - 4, colW, 8, 'F');
+                doc.setTextColor(15, 76, 117);
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text(title, margin + 2, y + 1);
+                y += 8;
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+            }
+
+            function addRow(label, value) {
+                checkPage(6);
+                doc.setFont('helvetica', 'normal');
+                doc.text(label, margin + 2, y);
+                doc.setFont('helvetica', 'bold');
+                doc.text(String(value), margin + colW - 2, y, { align: 'right' });
+                doc.setFont('helvetica', 'normal');
+                y += 5.5;
+            }
+
+            // --- INPUTS ---
+            sectionTitle('INPUTS');
             var height = document.getElementById('height').value;
             var width = document.getElementById('width').value;
             var depth = document.getElementById('depth').value;
@@ -2188,114 +2234,147 @@
             var mountSelect = document.getElementById('mounting');
             var mountText = mountSelect.options[mountSelect.selectedIndex].text;
 
-            lines.push('INPUTS');
-            lines.push('─'.repeat(50));
-            lines.push('Enclosure Dimensions: ' + height + ' x ' + width + ' x ' + depth + ' ' + unit);
-            lines.push('Material: ' + matText);
-            lines.push('Mounting: ' + mountText);
-            lines.push('Max Internal Temperature: ' + maxInternalC + ' °C (' + (maxInternalC * 9/5 + 32) + ' °F)');
-            lines.push('Heat Load: ' + heatLoad.toFixed(2) + ' W');
+            addRow('Enclosure Dimensions', height + ' x ' + width + ' x ' + depth + ' ' + unit);
+            addRow('Material', matText);
+            addRow('Mounting', mountText);
+            addRow('Max Internal Temperature', maxInternalC + ' \u00B0C (' + (maxInternalC * 9/5 + 32) + ' \u00B0F)');
+            addRow('Heat Load (total)', heatLoad.toFixed(2) + ' W');
+
             var sunExport = document.getElementById('sunlight').value === '1';
             if (sunExport) {
                 var sunColorSel = document.getElementById('sunColor');
-                lines.push('Direct Sunlight: Yes (' + sunColorSel.options[sunColorSel.selectedIndex].text + ')');
-                var solarGainExport = heatLoad - parseFloat(document.getElementById('totalHeatDisplay')?.textContent) || 0;
-                // Recalculate solar gain for export
-                lines.push('Note: Total heat used in calculations includes solar gain.');
+                addRow('Direct Sunlight', 'Yes - ' + sunColorSel.options[sunColorSel.selectedIndex].text);
             } else {
-                lines.push('Direct Sunlight: No');
+                addRow('Direct Sunlight', 'No');
             }
-            lines.push('');
+            y += 3;
 
-            // Results
-            lines.push('RESULTS — SEALED ENCLOSURE');
-            lines.push('─'.repeat(50));
-            lines.push('Effective Surface Area: ' + effectiveArea.toFixed(4) + ' m²');
-            lines.push('Thermal Transmittance (k): ' + k + ' W/m²·°C');
-            lines.push('Temperature Rise (ΔT): ' + deltaT.toFixed(2) + ' °C (' + (deltaT * 9/5).toFixed(2) + ' °F)');
-            lines.push('Max Ambient Temperature: ' + maxAmbC.toFixed(1) + ' °C (' + maxAmbF.toFixed(1) + ' °F)');
-            lines.push('Max Heat Dissipation @ 40°C: ' + maxQ40.toFixed(1) + ' W');
-            lines.push('');
+            // --- RESULTS ---
+            sectionTitle('RESULTS - SEALED ENCLOSURE');
+            addRow('Effective Surface Area', effectiveArea.toFixed(4) + ' m\u00B2');
+            addRow('Thermal Transmittance (k)', k + ' W/m\u00B2\u00B7\u00B0C');
+            addRow('Temperature Rise (\u0394T)', deltaT.toFixed(2) + ' \u00B0C (' + (deltaT * 9/5).toFixed(2) + ' \u00B0F)');
+            addRow('Max Ambient Temperature', maxAmbC.toFixed(1) + ' \u00B0C (' + maxAmbF.toFixed(1) + ' \u00B0F)');
+            addRow('Max Heat Dissipation @ 40\u00B0C', maxQ40.toFixed(1) + ' W');
+            y += 3;
 
-            // Ventilation comparison
+            // --- VENTILATION COMPARISON ---
+            sectionTitle('VENTILATION COMPARISON');
             var kOpen = k * 1.80;
             var kScreen = k * 1.56;
             var cfmInput = document.getElementById('fanCfmInput').value;
             var cfm = parseFloat(cfmInput) || 0;
 
-            lines.push('VENTILATION COMPARISON');
-            lines.push('─'.repeat(50));
-            var ventConfigs = [
-                { label: 'Sealed', coeff: k * effectiveArea },
-                { label: 'Vent Open', coeff: kOpen * effectiveArea },
-                { label: 'Vent w/ Screen', coeff: kScreen * effectiveArea },
-                { label: 'Forced (' + cfm + ' CFM)', coeff: k * effectiveArea + cfm / 1.76 }
-            ];
-            lines.push(padRight('Configuration', 22) + padRight('ΔT (°C)', 12) + padRight('ΔT (°F)', 12) + padRight('Max Amb (°C)', 14) + 'Max Q @ 40°C (W)');
-            ventConfigs.forEach(function(vc) {
-                var vdt = heatLoad / vc.coeff;
-                var vdtF = vdt * 9 / 5;
+            var ventRows = [
+                ['Sealed', k * effectiveArea],
+                ['Vent Open', kOpen * effectiveArea],
+                ['Vent w/ Screen', kScreen * effectiveArea],
+                ['Forced (' + cfm + ' CFM)', k * effectiveArea + cfm / 1.76]
+            ].map(function(vc) {
+                var vdt = heatLoad / vc[1];
                 var vAmb = maxInternalC - vdt;
-                var vQ = vc.coeff * (maxInternalC - 40);
-                lines.push(padRight(vc.label, 22) + padRight(vdt.toFixed(2), 12) + padRight(vdtF.toFixed(2), 12) + padRight(vAmb.toFixed(1), 14) + vQ.toFixed(0));
+                var vQ = vc[1] * (maxInternalC - 40);
+                return [vc[0], vdt.toFixed(2), (vdt * 9/5).toFixed(2), vAmb.toFixed(1), vQ.toFixed(0)];
             });
-            lines.push('');
 
-            // Temperature table
-            lines.push('INTERNAL TEMPERATURE vs. AMBIENT (SEALED)');
-            lines.push('─'.repeat(50));
-            lines.push(padRight('Amb (°F)', 12) + padRight('Amb (°C)', 12) + padRight('Int (°C)', 12) + padRight('Int (°F)', 12) + 'Status');
+            checkPage(30);
+            doc.autoTable({
+                startY: y,
+                margin: { left: margin, right: margin },
+                head: [['Configuration', '\u0394T (\u00B0C)', '\u0394T (\u00B0F)', 'Max Amb (\u00B0C)', 'Max Q @ 40\u00B0C (W)']],
+                body: ventRows,
+                styles: { fontSize: 8, cellPadding: 1.5 },
+                headStyles: { fillColor: [15, 76, 117], fontSize: 8 },
+                alternateRowStyles: { fillColor: [248, 250, 252] }
+            });
+            y = doc.lastAutoTable.finalY + 6;
+
+            // --- TEMPERATURE TABLE ---
+            sectionTitle('INTERNAL TEMPERATURE vs. AMBIENT');
+            var tempRows = [];
             for (var ambF = 10; ambF <= 150; ambF += 10) {
                 var ambC = (ambF - 32) * 5 / 9;
                 var intC = ambC + deltaT;
                 var intF = intC * 9 / 5 + 32;
                 var status = intC <= maxInternalC ? 'OK' : intC <= maxInternalC + 10 ? 'Warning' : 'Exceeds';
-                lines.push(padRight(ambF + '', 12) + padRight(ambC.toFixed(1), 12) + padRight(intC.toFixed(1), 12) + padRight(intF.toFixed(1), 12) + status);
+                tempRows.push([ambF + '\u00B0F', ambC.toFixed(1), intC.toFixed(1), intF.toFixed(1), status]);
             }
-            lines.push('');
 
-            // Fan section
+            checkPage(30);
+            doc.autoTable({
+                startY: y,
+                margin: { left: margin, right: margin },
+                head: [['Amb (\u00B0F)', 'Amb (\u00B0C)', 'Int (\u00B0C)', 'Int (\u00B0F)', 'Status']],
+                body: tempRows,
+                styles: { fontSize: 7, cellPadding: 1.2 },
+                headStyles: { fillColor: [15, 76, 117], fontSize: 7.5 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                didParseCell: function(data) {
+                    if (data.section === 'body' && data.column.index === 4) {
+                        if (data.cell.raw === 'Exceeds') {
+                            data.cell.styles.textColor = [153, 27, 27];
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (data.cell.raw === 'Warning') {
+                            data.cell.styles.textColor = [146, 64, 14];
+                        } else {
+                            data.cell.styles.textColor = [6, 95, 70];
+                        }
+                    }
+                }
+            });
+            y = doc.lastAutoTable.finalY + 6;
+
+            // --- FAN ANALYSIS ---
             if (cfm > 0) {
                 var fanCoeff = k * effectiveArea + cfm / 1.76;
                 var fanDT = heatLoad / fanCoeff;
                 var fanMaxAmb = maxInternalC - fanDT;
-                lines.push('FAN ANALYSIS (' + cfm + ' CFM)');
-                lines.push('─'.repeat(50));
-                lines.push('ΔT with fan: ' + fanDT.toFixed(2) + ' °C');
-                lines.push('ΔT passive: ' + deltaT.toFixed(2) + ' °C');
-                lines.push('Reduction: ' + (deltaT - fanDT).toFixed(2) + ' °C');
-                lines.push('Max Ambient w/ Fan: ' + fanMaxAmb.toFixed(1) + ' °C (' + (fanMaxAmb * 9/5 + 32).toFixed(1) + ' °F)');
-                lines.push('');
 
-                lines.push('ΔT COMPARISON — PASSIVE vs. FAN @ VARYING HEAT LOADS');
-                lines.push('─'.repeat(50));
-                lines.push(padRight('Heat (W)', 12) + padRight('ΔT Pass (°C)', 15) + padRight('ΔT Fan (°C)', 14) + 'Reduction (°C)');
+                sectionTitle('FAN ANALYSIS (' + cfm + ' CFM)');
+                addRow('\u0394T with fan', fanDT.toFixed(2) + ' \u00B0C');
+                addRow('\u0394T passive only', deltaT.toFixed(2) + ' \u00B0C');
+                addRow('Temperature reduction', (deltaT - fanDT).toFixed(2) + ' \u00B0C');
+                addRow('Max Ambient w/ Fan', fanMaxAmb.toFixed(1) + ' \u00B0C (' + (fanMaxAmb * 9/5 + 32).toFixed(1) + ' \u00B0F)');
+                y += 3;
+
+                sectionTitle('\u0394T COMPARISON - PASSIVE vs. FAN');
+                var dtRows = [];
                 for (var q = 0; q <= 200; q += 15) {
                     var pdt = q / (k * effectiveArea);
                     var fdt = q / fanCoeff;
-                    lines.push(padRight(q + '', 12) + padRight(pdt.toFixed(2), 15) + padRight(fdt.toFixed(2), 14) + (pdt - fdt).toFixed(2));
+                    dtRows.push([q + ' W', pdt.toFixed(2), fdt.toFixed(2), (pdt - fdt).toFixed(2)]);
                 }
                 if (200 % 15 !== 0) {
                     var pdt200 = 200 / (k * effectiveArea);
                     var fdt200 = 200 / fanCoeff;
-                    lines.push(padRight('200', 12) + padRight(pdt200.toFixed(2), 15) + padRight(fdt200.toFixed(2), 14) + (pdt200 - fdt200).toFixed(2));
+                    dtRows.push(['200 W', pdt200.toFixed(2), fdt200.toFixed(2), (pdt200 - fdt200).toFixed(2)]);
                 }
-                lines.push('');
+
+                checkPage(30);
+                doc.autoTable({
+                    startY: y,
+                    margin: { left: margin, right: margin },
+                    head: [['Heat (W)', '\u0394T Passive (\u00B0C)', '\u0394T Fan (\u00B0C)', 'Reduction (\u00B0C)']],
+                    body: dtRows,
+                    styles: { fontSize: 7, cellPadding: 1.2 },
+                    headStyles: { fillColor: [15, 76, 117], fontSize: 7.5 },
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                });
+                y = doc.lastAutoTable.finalY + 6;
             }
 
-            lines.push('═'.repeat(50));
-            lines.push('Disclaimer: Steady-state estimates only. Actual performance');
-            lines.push('may vary due to environmental factors and installation conditions.');
+            // --- FOOTER ---
+            checkPage(15);
+            doc.setFillColor(255, 251, 235);
+            doc.rect(margin, y, colW, 14, 'F');
+            doc.setDrawColor(252, 211, 77);
+            doc.rect(margin, y, colW, 14, 'S');
+            doc.setFontSize(7.5);
+            doc.setTextColor(146, 64, 14);
+            doc.text('Disclaimer: Steady-state estimates only. Actual performance may vary due to solar loading,', margin + 2, y + 4.5);
+            doc.text('internal airflow patterns, gasket condition, altitude, humidity, and other environmental factors.', margin + 2, y + 9);
 
-            var blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'Thermal_Load_Report_' + new Date().toISOString().slice(0, 10) + '.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            doc.save('Thermal_Analysis_Report_' + new Date().toISOString().slice(0, 10) + '.pdf');
         }
 
         function padRight(str, len) {
