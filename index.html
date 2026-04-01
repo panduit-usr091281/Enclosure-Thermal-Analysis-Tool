@@ -735,6 +735,14 @@
                         <span class="detail-label">Temperature Rise (ΔT)</span>
                         <span class="detail-value" id="deltaT">—</span>
                     </div>
+                    <div class="detail-row" id="solarLoadRow" style="display:none;">
+                        <span class="detail-label">Solar Heat Gain</span>
+                        <span class="detail-value" id="solarLoad">—</span>
+                    </div>
+                    <div class="detail-row" id="totalHeatRow" style="display:none;">
+                        <span class="detail-label">Total Heat (Equipment + Solar)</span>
+                        <span class="detail-value" id="totalHeatDisplay">—</span>
+                    </div>
                     <div class="detail-row">
                         <span class="detail-label">Max Ambient (°F)</span>
                         <span class="detail-value" id="maxAmbientF">—</span>
@@ -1101,7 +1109,7 @@
                     </thead>
                     <tbody>
                         <tr><td>Painted Mild Steel</td><td>5.5</td><td>Standard painted carbon steel enclosure</td></tr>
-                        <tr><td>Stainless Steel (304)</td><td>5.2</td><td>Typical brushed/passivated finish</td></tr>
+                        <tr><td>Stainless Steel (304)</td><td>3.4</td><td>Brushed/passivated finish, lower emissivity</td></tr>
                         <tr><td>Aluminum (Painted)</td><td>5.5</td><td>Paint dominates emissivity; same as painted steel</td></tr>
                         <tr><td>Fiberglass (GRP)</td><td>3.4</td><td>Glass-reinforced polyester, lower conductivity</td></tr>
                         <tr><td>Polycarbonate</td><td>2.5</td><td>Overall U-value including convection &amp; radiation</td></tr>
@@ -1471,13 +1479,13 @@
             let cfmForGoal, cfmFor55;
 
             if (goalDeltaT > 0) {
-                cfmForGoal = (1.76 * heatLoad) / goalDeltaT;
+                cfmForGoal = (1.76 * totalHeat) / goalDeltaT;
             } else {
                 cfmForGoal = Infinity;
             }
 
             if (target55DeltaT > 0) {
-                cfmFor55 = (1.76 * heatLoad) / target55DeltaT;
+                cfmFor55 = (1.76 * totalHeat) / target55DeltaT;
             } else {
                 cfmFor55 = Infinity;
             }
