@@ -789,6 +789,14 @@
                 <div class="divider"></div>
                 <div class="section-title">Internal Temperature vs. Ambient</div>
 
+                <div id="tempTableWarning" style="background:#fef2f2; border:1.5px solid #fca5a5; border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem; display:none; align-items:flex-start; gap:0.5rem;">
+                    <span style="font-size:1.25rem; line-height:1;">&#9888;</span>
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem; color:#991b1b; margin-bottom:0.2rem;">Fan Required</div>
+                        <div id="tempTableWarningText" style="font-size:0.8rem; color:#7f1d1d; line-height:1.45;"></div>
+                    </div>
+                </div>
+
                 <div class="temp-table-wrap">
                     <table class="temp-table">
                         <thead>
@@ -1334,6 +1342,10 @@
             const excessHeat = totalHeat - maxDissipationAt40;
             const maxAmbientF_check = maxAmbientC * 9 / 5 + 32;
 
+            // Compute required CFM (available for all downstream sections)
+            const fanDeltaT = maxInternalC - standardAmbient;
+            const requiredCFM = fanDeltaT > 0 ? (1.76 * totalHeat) / fanDeltaT : 1.76 * totalHeat;
+
             if (excessHeat > 0 || maxAmbientF_check < 60) {
                 fanPanel.style.display = 'block';
 
@@ -1349,10 +1361,6 @@
                 document.getElementById('fanWarningText').textContent = warningParts.join(' ');
 
                 // CFM = 1.76 × watts / ΔT  — standard forced-air formula
-                // Using a ΔT of (maxInternal - 40) for fan sizing at 40°C ambient
-                const fanDeltaT = maxInternalC - standardAmbient;
-                const requiredCFM = fanDeltaT > 0 ? (1.76 * totalHeat) / fanDeltaT : 1.76 * totalHeat;
-
                 document.getElementById('fanCFM').textContent = requiredCFM.toFixed(1) + ' CFM';
 
                 // Fan size recommendation based on CFM
@@ -1394,6 +1402,23 @@
             const tableBody = document.getElementById('tempTableBody');
             tableBody.innerHTML = '';
             const tableData = [];
+
+            // Show/hide fan warning in temperature table section
+            const tempWarning = document.getElementById('tempTableWarning');
+            if (excessHeat > 0 || maxAmbientF_check < 60) {
+                tempWarning.style.display = 'flex';
+                var warnMsg = 'Passive cooling is insufficient. ';
+                if (excessHeat > 0) {
+                    warnMsg += 'Heat load exceeds enclosure capacity by ' + excessHeat.toFixed(0) + ' W. ';
+                }
+                if (maxAmbientF_check < 60) {
+                    warnMsg += 'Max ambient is ' + maxAmbientF_check.toFixed(1) + '°F (' + maxAmbientC.toFixed(1) + '°C), below the 60°F safe limit. ';
+                }
+                warnMsg += 'Minimum ' + requiredCFM.toFixed(1) + ' CFM fan recommended.';
+                document.getElementById('tempTableWarningText').textContent = warnMsg;
+            } else {
+                tempWarning.style.display = 'none';
+            }
 
             for (let ambF = 10; ambF <= 150; ambF += 10) {
                 const ambC = (ambF - 32) * 5 / 9;
